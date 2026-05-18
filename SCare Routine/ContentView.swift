@@ -7,18 +7,151 @@
 
 import SwiftUI
 
+/// Root view — AppState.phase'e göre uygun ekrana yönlendirir.
 struct ContentView: View {
+    @State private var appState = AppState()
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Group {
+            switch appState.phase {
+            case .launching:
+                LaunchView()
+            case .onboarding:
+                SignInScreenView()
+            case .authenticated(let user):
+                if appState.needsOnboarding {
+                    OnboardingHostView()
+                } else {
+                    MainTabView(user: user)
+                }
+            }
         }
-        .padding()
+        .environment(appState)
+        .tint(Theme.accent)
+        .task {
+            await appState.bootstrap()
+        }
     }
 }
 
-#Preview {
-    ContentView()
+// MARK: - Launch (yükleme)
+
+private struct LaunchView: View {
+    var body: some View {
+        ZStack {
+            Theme.canvas.ignoresSafeArea()
+            VStack(spacing: 20) {
+                Image("Logo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 80, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                ProgressView()
+                    .tint(Theme.inkSoft)
+            }
+        }
+    }
+}
+
+// MARK: - Sign in ekranı (henüz auth olmamış kullanıcı)
+
+private struct SignInScreenView: View {
+    @Environment(AppState.self) private var appState
+    @State private var errorMessage: String?
+
+    var body: some View {
+        ZStack {
+            Theme.canvas.ignoresSafeArea()
+
+            VStack(spacing: 24) {
+                Spacer()
+
+                Image("Logo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 96, height: 96)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+
+                VStack(spacing: 10) {
+                    Text("SCare Routine")
+                        .font(Theme.Typo.title)
+                        .foregroundStyle(Theme.ink)
+                    Text("Kozmetik arşivin ve akıllı rutin asistanın")
+                        .font(Theme.Typo.body)
+                        .foregroundStyle(Theme.inkSoft)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+
+                Spacer()
+
+                SignInWithAppleView(
+                    locale: appState.locale,
+                    onSuccess: { user in appState.signIn(user) },
+                    onError: { err in errorMessage = err.errorDescription }
+                )
+                .padding(.horizontal, 28)
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(Theme.Typo.caption)
+                        .foregroundStyle(Theme.alert)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 28)
+                }
+
+                Text("Devam ederek Gizlilik Politikası ve Kullanım Şartları'nı kabul etmiş olursun.")
+                    .font(Theme.Typo.caption)
+                    .foregroundStyle(Theme.inkMute)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 24)
+            }
+        }
+    }
+}
+
+// MARK: - Authenticated placeholder (ana ekran tasarımı sonra)
+
+private struct MainPlaceholderView: View {
+    let user: AuthUser
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Theme.canvas.ignoresSafeArea()
+
+                VStack(spacing: 18) {
+                    Spacer()
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 44, weight: .light))
+                        .foregroundStyle(Theme.ink)
+
+                    Text("Profilin hazır")
+                        .font(Theme.Typo.title)
+                        .foregroundStyle(Theme.ink)
+
+                    Text(user.displayName ?? user.email ?? user.id)
+                        .font(Theme.Typo.body)
+                        .foregroundStyle(Theme.inkSoft)
+
+                    Spacer()
+
+                    Text("Ana ekran tasarımı geliyor")
+                        .font(Theme.Typo.caption)
+                        .foregroundStyle(Theme.inkMute)
+
+                    Button("Çıkış yap") {
+                        Task { await appState.signOut() }
+                    }
+                    .font(Theme.Typo.body)
+                    .foregroundStyle(Theme.alert)
+                    .padding(.bottom, 24)
+                }
+                .padding()
+            }
+            .navigationBarHidden(true)
+        }
+    }
 }
