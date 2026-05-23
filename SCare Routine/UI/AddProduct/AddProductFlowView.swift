@@ -561,6 +561,14 @@ struct AddProductFlowView: View {
             return (barcode, blocks)
         }
 
+        // VISION strict barcode scan — yalnızca product symbology (EAN/UPC) kabul eder.
+        // Live AVCaptureMetadataOutput miss verdiyse veya kullanıcı barkodu kareye almadan
+        // fotoyu çektiyse, foto üzerinde sessizce çalışır. detectBarcode'dan stricter:
+        // QR/Code128 reject, payload numeric + 8-14 hane.
+        let frontVisionBarcodeTask: Task<String?, Never> = Task.detached(priority: .userInitiated) {
+            await BarcodeImageScanner.scan(image: fullResImage)
+        }
+
         // SPECULATIVE PIPELINE — upload + FP + recognize arka planda detached.
         let uploadTask: Task<ProductScanService.UploadedImage?, Never> = Task.detached(priority: .userInitiated) {
             let down = await processedImageTask.value.downscaled
@@ -583,14 +591,23 @@ struct AddProductFlowView: View {
         // extract eder, iOS regex'inden çok daha güvenilir.
         let specTask: Task<ProductRecognizeResponse?, Never> = Task.detached(priority: .userInitiated) {
             let ocrResult = await ocrTask.value
+            let visionBarcode = await frontVisionBarcodeTask.value
             let uploaded = await uploadTask.value
             let fp = await fpTask.value
             let fpClean = await fpCleanTask.value?.vec
-            let resolvedBarcode = ocrResult.barcode ?? resolvedPendingBarcode
+            // Barkod öncelik sırası:
+            // 1) pendingBarcode (live AVCaptureMetadataOutput hit, by-barcode miss verdi)
+            // 2) BarcodeImageScanner Vision strict scan (yalnız EAN/UPC, payload validated)
+            // 3) ProductScanService.detectBarcode (loose — QR/Code128 dahil)
+            let resolvedBarcode = resolvedPendingBarcode ?? visionBarcode ?? ocrResult.barcode
+            print("[Vision Barcode] front=\(visionBarcode ?? "-") legacyOCR=\(ocrResult.barcode ?? "-") pending=\(resolvedPendingBarcode ?? "-") → resolved=\(resolvedBarcode ?? "-")")
             let ocrText = ocrResult.blocks.isEmpty ? nil : ocrResult.blocks.joined(separator: "\n")
             // Hiçbir sinyal yoksa speculative atla
             if resolvedBarcode == nil && ocrText == nil && fp == nil {
                 return nil
+            }
+            if let bc = resolvedBarcode {
+                print("[Recognize] speculative front with barcode=\(bc)")
             }
             do {
                 return try await ProductScanService.shared.recognize(
@@ -719,12 +736,18 @@ struct AddProductFlowView: View {
             async let bl = ProductScanService.shared.recognizeTextBlocks(from: fullResImage)
             return await (bc, bl)
         }
+        // Vision strict barcode scan (arka foto) — back foto'da barkod daha sık görülür.
+        let backVisionBarcodeTask: Task<String?, Never> = Task.detached(priority: .userInitiated) {
+            await BarcodeImageScanner.scan(image: fullResImage)
+        }
         let backUploadTask: Task<ProductScanService.UploadedImage?, Never> = Task.detached(priority: .userInitiated) {
             (try? await ProductScanService.shared.uploadImage(image))
         }
 
         let (barcode, blocks) = await backOcrTask.value
+        let backVisionBarcode = await backVisionBarcodeTask.value
         backOcrBlocks = blocks.isEmpty ? nil : blocks
+        print("[Vision Barcode] back=\(backVisionBarcode ?? "-") legacyOCR=\(barcode ?? "-")")
 
         // YENİ AKIŞ — duplicate row önlemek için:
         // 1) Speculative recognize'ı CANCEL ETME, BEKLE → tek attempt_id ile devam et
@@ -743,10 +766,14 @@ struct AddProductFlowView: View {
         speculativeRecognizeTask = nil
 
         guard let result = specResult else {
-            // Speculative recognize fail oldu → fallback: tam recognize call
+            // Speculative recognize fail oldu → fallback: tam recognize call.
+            // Barkod öncelik: pendingBarcode (live hit) > Vision strict (front/back) > loose OCR detect.
             let uploaded = await backUploadTask.value
             let frontUploaded = await frontUploadTask?.value
-            let finalBarcode = barcode ?? pendingBarcode
+            let finalBarcode = pendingBarcode ?? backVisionBarcode ?? barcode
+            if let bc = finalBarcode {
+                print("[Recognize] fallback back-path barcode=\(bc)")
+            }
             await recognizeNow(
                 barcode: finalBarcode,
                 ocrText: nil,
