@@ -67,7 +67,7 @@ struct ProfileEditCountryView: View {
                             HStack(spacing: 12) {
                                 Text(c.flag)
                                     .font(.system(size: 22))
-                                Text(c.nameTR)
+                                Text(LocalizedStringKey(c.nameTR))
                                     .foregroundStyle(Theme.ink)
                                 Spacer()
                                 if selectedCode == c.code {
@@ -80,7 +80,7 @@ struct ProfileEditCountryView: View {
                         .buttonStyle(.plain)
                     }
                 } footer: {
-                    Text("Yaşadığın bölge cilt önerilerini hava ve UV koşullarına göre kişiselleştirmemize yardım eder.")
+                    Text(L("Yaşadığın bölge cilt önerilerini hava ve UV koşullarına göre kişiselleştirmemize yardım eder."))
                         .font(Theme.Typo.caption)
                         .foregroundStyle(Theme.inkSoft)
                 }
@@ -88,24 +88,24 @@ struct ProfileEditCountryView: View {
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Theme.canvas)
-            .searchable(text: $searchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Ülke ara")
-            .navigationTitle("Ülke")
+            .searchable(text: $searchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: L("Ülke ara"))
+            .navigationTitle(L("Ülke"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("İptal") { dismiss() }
+                    Button(L("İptal")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Kaydet") { save() }
+                    Button(L("Kaydet")) { save() }
                         .disabled(isSaving || selectedCode == appState.currentProfile?.country)
                         .fontWeight(.semibold)
                 }
             }
-            .alert("Hata", isPresented: Binding(
+            .alert(L("Hata"), isPresented: Binding(
                 get: { errorMessage != nil },
                 set: { if !$0 { errorMessage = nil } }
             )) {
-                Button("Tamam") { errorMessage = nil }
+                Button(L("Tamam")) { errorMessage = nil }
             } message: {
                 Text(errorMessage ?? "")
             }

@@ -65,6 +65,11 @@ struct ProductDetailView: View {
         NavigationStack {
             Form {
                 heroSection
+                safetyBadgesSection
+                activesSection
+                concernsSection
+                usageSection
+                warningsSection
                 detailsSection
                 ingredientsSection
                 preferencesSection
@@ -86,30 +91,30 @@ struct ProductDetailView: View {
                             .foregroundStyle(Theme.inkSoft)
                             .symbolRenderingMode(.hierarchical)
                     }
-                    .accessibilityLabel("Kapat")
+                    .accessibilityLabel(L("Kapat"))
                 }
             }
             .confirmationDialog(
-                "Bu ürünü arşivinden silmek istiyor musun?",
+                L("Bu ürünü arşivinden silmek istiyor musun?"),
                 isPresented: $showDeleteConfirm,
                 titleVisibility: .visible
             ) {
-                Button("Sil", role: .destructive) {
+                Button(L("Sil"), role: .destructive) {
                     Task { await performDelete() }
                 }
-                Button("Vazgeç", role: .cancel) {}
+                Button(L("Vazgeç"), role: .cancel) {}
             } message: {
-                Text("Bu işlem geri alınamaz.")
+                Text(L("Bu işlem geri alınamaz."))
             }
             .alert(
-                "İşlem başarısız",
+                L("İşlem başarısız"),
                 isPresented: Binding(
                     get: { mutationError != nil },
                     set: { if !$0 { mutationError = nil } }
                 ),
                 presenting: mutationError
             ) { _ in
-                Button("Tamam", role: .cancel) { mutationError = nil }
+                Button(L("Tamam"), role: .cancel) { mutationError = nil }
             } message: { msg in
                 Text(msg)
             }
@@ -126,9 +131,13 @@ struct ProductDetailView: View {
     private var heroSection: some View {
         Section {
             VStack(spacing: 14) {
-                AsyncRemoteImage(url: photoURL)
+                // Hero — .fit modunda göster ki dikey çekilmiş ürün etiket fotoları
+                // (Cosmed Atopia, Siveno gibi şişe/kutu fotorafları) yarım çıkmasın.
+                // Theme.surfaceLow arka plan + center align dikey foto için doğal.
+                AsyncRemoteImage(url: photoURL, contentMode: .fit)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 200)
+                    .frame(height: 260)
+                    .background(Theme.surfaceLow)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
@@ -155,6 +164,32 @@ struct ProductDetailView: View {
                             .foregroundStyle(Theme.inkSoft)
                             .padding(.top, 2)
                     }
+
+                    // Verification badge — crowdsource doğrulama durumu
+                    if let badge = verificationBadge {
+                        HStack(spacing: 6) {
+                            Image(systemName: badge.systemImage)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(badge.tint)
+                            Text(badge.label)
+                                .font(Theme.Typo.caption.weight(.medium))
+                                .foregroundStyle(Theme.ink)
+                            if let version = fullDetail?.formulaVersion, version > 1 {
+                                Text(String(format: L("• Formül v%lld"), version))
+                                    .font(Theme.Typo.caption)
+                                    .foregroundStyle(Theme.inkSoft)
+                            }
+                            if let region = fullDetail?.region, !region.isEmpty {
+                                Text("• \(region)")
+                                    .font(Theme.Typo.caption)
+                                    .foregroundStyle(Theme.inkSoft)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(badge.tint.opacity(0.12)))
+                        .padding(.top, 4)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -165,32 +200,230 @@ struct ProductDetailView: View {
         }
     }
 
+    /// Pregnancy / vegan / fragrance-free / sulfate-free / silicone-free / alcohol-free
+    /// flag'leri — INCI-derived deterministik enrichment'tan gelir. Sadece bilinen
+    /// (nil olmayan) bayrakları gösteririz, kullanıcı net "var/yok" görsün.
+    @ViewBuilder
+    private var safetyBadgesSection: some View {
+        let badges = safetyBadges
+        if !badges.isEmpty {
+            Section {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
+                    ForEach(badges, id: \.label) { b in
+                        HStack(spacing: 6) {
+                            Image(systemName: b.systemImage)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(b.tint)
+                            Text(b.label)
+                                .font(Theme.Typo.caption.weight(.medium))
+                                .foregroundStyle(Theme.ink)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(b.tint.opacity(0.12))
+                        )
+                    }
+                }
+                .padding(.vertical, 4)
+                .listRowInsets(EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8))
+                .listRowBackground(Color.clear)
+            } header: {
+                Text(L("Güvenlik ve içerik"))
+            }
+        }
+    }
+
+    /// AI-extracted aktif maddeler — Niacinamide, Retinol, Salicylic Acid gibi.
+    /// Varsa yüzde + rol etiketiyle gösteriliyor.
+    @ViewBuilder
+    private var activesSection: some View {
+        if let actives = fullDetail?.keyActives, !actives.isEmpty {
+            Section {
+                ForEach(actives, id: \.name) { active in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(active.name)
+                                .foregroundStyle(Theme.ink)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if let role = active.role, !role.isEmpty {
+                                Text(role.capitalized)
+                                    .font(Theme.Typo.caption)
+                                    .foregroundStyle(Theme.inkSoft)
+                            }
+                        }
+                        Spacer(minLength: 8)
+                        if let pct = active.percent {
+                            Text("%\(String(format: "%g", pct))")
+                                .font(Theme.Typo.caption.weight(.semibold))
+                                .foregroundStyle(Theme.ink)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(Theme.success.opacity(0.18)))
+                        }
+                    }
+                }
+            } header: {
+                HStack {
+                    Text(L("Aktif maddeler"))
+                    Spacer()
+                    Text("\(actives.count)").foregroundStyle(Theme.inkSoft)
+                }
+            }
+            .listRowBackground(Theme.surface.opacity(0.6))
+        }
+    }
+
+    /// Cilt tipi uygunluğu + ürünün adreslediği sorunlar.
+    @ViewBuilder
+    private var concernsSection: some View {
+        let suitable = fullDetail?.suitableSkinTypes ?? []
+        let unsuitable = fullDetail?.unsuitableSkinTypes ?? []
+        let concerns = fullDetail?.concernsAddressed ?? []
+        let allergens = fullDetail?.allergensFlags ?? []
+
+        if !suitable.isEmpty || !unsuitable.isEmpty || !concerns.isEmpty || !allergens.isEmpty {
+            Section {
+                if !suitable.isEmpty {
+                    LabeledContent(L("Uygun cilt")) {
+                        Text(suitable.map { $0.capitalized }.joined(separator: ", "))
+                            .foregroundStyle(Theme.inkSoft)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+                if !unsuitable.isEmpty {
+                    LabeledContent(L("Kaçınılması gereken")) {
+                        Text(unsuitable.map { $0.capitalized }.joined(separator: ", "))
+                            .foregroundStyle(Theme.alert)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+                if !concerns.isEmpty {
+                    LabeledContent(L("Adreslediği")) {
+                        Text(concerns.map { $0.capitalized }.joined(separator: ", "))
+                            .foregroundStyle(Theme.inkSoft)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+                if let ph = fullDetail?.ph {
+                    LabeledContent("pH", value: String(format: "%.1f", ph))
+                }
+                if !allergens.isEmpty {
+                    DisclosureGroup {
+                        ForEach(allergens, id: \.self) { a in
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Theme.alert)
+                                Text(a.capitalized)
+                                    .foregroundStyle(Theme.ink)
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text(L("EU 26 alerjen"))
+                                .foregroundStyle(Theme.ink)
+                            Spacer()
+                            Text("\(allergens.count)").foregroundStyle(Theme.alert)
+                        }
+                    }
+                    .tint(Theme.inkSoft)
+                }
+            } header: {
+                Text(L("Cilt uyumu"))
+            }
+            .listRowBackground(Theme.surface.opacity(0.6))
+        }
+    }
+
+    /// Kullanım talimatı — ürün etiketinden veya marka resmi sayfasından okunmuş.
+    /// Salt kaynaklı veri, kaynaksız AI generation yapmıyoruz.
+    @ViewBuilder
+    private var usageSection: some View {
+        if let txt = fullDetail?.usageDirections, !txt.isEmpty {
+            Section {
+                Text(txt)
+                    .font(Theme.Typo.body)
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 4)
+            } header: {
+                Label(L("Nasıl kullanılır"), systemImage: "hand.tap")
+            }
+            .listRowBackground(Theme.surface.opacity(0.6))
+        }
+    }
+
+    @ViewBuilder
+    private var warningsSection: some View {
+        let warn = fullDetail?.warnings ?? ""
+        let storage = fullDetail?.storageInstructions ?? ""
+        let target = fullDetail?.targetAudience ?? ""
+        let manu = fullDetail?.manufacturer ?? ""
+        if !warn.isEmpty || !storage.isEmpty || !target.isEmpty || !manu.isEmpty {
+            Section {
+                if !warn.isEmpty {
+                    LabeledContent(L("Uyarılar")) {
+                        Text(warn)
+                            .foregroundStyle(Theme.alert)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                if !storage.isEmpty {
+                    LabeledContent(L("Saklama")) {
+                        Text(storage)
+                            .foregroundStyle(Theme.inkSoft)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                if !target.isEmpty {
+                    LabeledContent(L("Hedef"), value: target)
+                }
+                if !manu.isEmpty {
+                    LabeledContent(L("Üretici")) {
+                        Text(manu)
+                            .foregroundStyle(Theme.inkSoft)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            } header: {
+                Text(L("Uyarılar & saklama"))
+            }
+            .listRowBackground(Theme.surface.opacity(0.6))
+        }
+    }
+
     private var detailsSection: some View {
         Section {
             if let vol = formattedVolume {
-                LabeledContent("Hacim", value: vol)
+                LabeledContent(L("Hacim"), value: vol)
             }
             if let pao = fullDetail?.paoMonths, pao > 0 {
-                LabeledContent("PAO", value: "\(pao) ay")
+                LabeledContent(L("PAO"), value: String(format: L("%lld ay"), pao))
             }
             if let cat = fullDetail?.category, !cat.isEmpty {
-                LabeledContent("Kategori", value: cat)
+                LabeledContent(L("Kategori"), value: cat)
             }
             if let created = localItem.createdAt {
-                LabeledContent("Eklendi", value: Self.shortDate(created))
+                LabeledContent(L("Eklendi"), value: Self.shortDate(created))
             }
             if fullDetail?.verified == true {
-                LabeledContent("Doğrulanma") {
+                LabeledContent(L("Doğrulanma")) {
                     HStack(spacing: 6) {
                         Image(systemName: "checkmark.seal.fill")
                             .foregroundStyle(Theme.success)
-                        Text("Doğrulanmış")
+                        Text(L("Doğrulanmış"))
                             .foregroundStyle(Theme.inkSoft)
                     }
                 }
             }
         } header: {
-            Text("Detaylar")
+            Text(L("Detaylar"))
         } footer: {
             if let err = loadError {
                 Text(err)
@@ -209,7 +442,7 @@ struct ProductDetailView: View {
                 if isLoading && ingredients.isEmpty {
                     HStack(spacing: 10) {
                         ProgressView().tint(Theme.inkSoft)
-                        Text("Yükleniyor…")
+                        Text(L("Yükleniyor…"))
                             .foregroundStyle(Theme.inkSoft)
                     }
                 } else if !ingredients.isEmpty {
@@ -227,7 +460,7 @@ struct ProductDetailView: View {
                         }
                     } label: {
                         HStack {
-                            Text("Bileşenler")
+                            Text(L("Bileşenler"))
                                 .foregroundStyle(Theme.ink)
                             Spacer()
                             Text("\(ingredients.count)")
@@ -251,7 +484,7 @@ struct ProductDetailView: View {
                         }
                     } label: {
                         HStack {
-                            Text("Öne çıkanlar")
+                            Text(L("Öne çıkanlar"))
                                 .foregroundStyle(Theme.ink)
                             Spacer()
                             Text("\(claims.count)")
@@ -261,7 +494,7 @@ struct ProductDetailView: View {
                     .tint(Theme.inkSoft)
                 }
             } header: {
-                Text("İçindekiler (INCI)")
+                Text(L("İçindekiler (INCI)"))
             }
             .listRowBackground(Theme.surface.opacity(0.6))
         }
@@ -270,7 +503,7 @@ struct ProductDetailView: View {
     private var preferencesSection: some View {
         Section {
             Toggle(isOn: $isFavorite) {
-                Label("Favori", systemImage: "star.fill")
+                Label(L("Favori"), systemImage: "star.fill")
                     .foregroundStyle(Theme.ink)
             }
             .tint(Theme.ink)
@@ -280,7 +513,7 @@ struct ProductDetailView: View {
             }
 
             Toggle(isOn: $isArchived) {
-                Label("Arşivde sakla", systemImage: "tray.full.fill")
+                Label(L("Arşivde sakla"), systemImage: "tray.full.fill")
                     .foregroundStyle(Theme.ink)
             }
             .tint(Theme.ink)
@@ -289,7 +522,7 @@ struct ProductDetailView: View {
                 Task { await syncArchived(newValue) }
             }
         } header: {
-            Text("Tercihler")
+            Text(L("Tercihler"))
         }
         .listRowBackground(Theme.surface.opacity(0.6))
     }
@@ -302,7 +535,7 @@ struct ProductDetailView: View {
             } label: {
                 HStack {
                     Spacer()
-                    Label("Arşivden sil", systemImage: "trash")
+                    Label(L("Arşivden sil"), systemImage: "trash")
                     Spacer()
                 }
             }
@@ -326,7 +559,7 @@ struct ProductDetailView: View {
         } catch APIError.notFound {
             // Katalogdan kaldırılmış olabilir — sessiz devam.
         } catch {
-            loadError = (error as? LocalizedError)?.errorDescription ?? "Detaylar yüklenemedi."
+            loadError = (error as? LocalizedError)?.errorDescription ?? L("Detaylar yüklenemedi.")
         }
     }
 
@@ -346,7 +579,7 @@ struct ProductDetailView: View {
             }
         } catch {
             Haptics.error()
-            mutationError = (error as? LocalizedError)?.errorDescription ?? "Favori güncellenemedi."
+            mutationError = (error as? LocalizedError)?.errorDescription ?? L("Favori güncellenemedi.")
             suppressFavoriteSync = true
             isFavorite = !newValue
             suppressFavoriteSync = false
@@ -367,7 +600,7 @@ struct ProductDetailView: View {
             }
         } catch {
             Haptics.error()
-            mutationError = (error as? LocalizedError)?.errorDescription ?? "Arşiv durumu güncellenemedi."
+            mutationError = (error as? LocalizedError)?.errorDescription ?? L("Arşiv durumu güncellenemedi.")
             suppressArchivedSync = true
             isArchived = !newValue
             suppressArchivedSync = false
@@ -384,7 +617,7 @@ struct ProductDetailView: View {
             dismiss()
         } catch {
             Haptics.error()
-            mutationError = (error as? LocalizedError)?.errorDescription ?? "Silme başarısız."
+            mutationError = (error as? LocalizedError)?.errorDescription ?? L("Silme başarısız.")
         }
     }
 
@@ -406,7 +639,7 @@ struct ProductDetailView: View {
         if let n = localItem.name, !n.isEmpty { return n }
         if let n = fullDetail?.name, !n.isEmpty { return n }
         if let nick = localItem.nickname, !nick.isEmpty { return nick }
-        return "Adsız ürün"
+        return L("Adsız ürün")
     }
 
     private var subtitleText: String? {
@@ -428,9 +661,86 @@ struct ProductDetailView: View {
         return String(format: "%.1f ml", vol)
     }
 
+    private struct SafetyBadge {
+        let label: String
+        let systemImage: String
+        let tint: Color
+    }
+
+    private struct VerificationBadge {
+        let label: String
+        let systemImage: String
+        let tint: Color
+    }
+
+    /// Crowdsource doğrulama badge'i (hero section'da görünür).
+    /// 1 tarama = "Tek tarama" (gri), 2-4 = "Doğrulanıyor" (sarı),
+    /// 5+ = "Doğrulanmış" (yeşil). INCI typo sayısı yüksekse "ham veri" uyarısı.
+    private var verificationBadge: VerificationBadge? {
+        guard let d = fullDetail else { return nil }
+        guard let count = d.verifiedCount else { return nil }
+        if count >= 5 {
+            return .init(
+                label: String(format: L("Doğrulanmış • %lld tarama"), count),
+                systemImage: "checkmark.seal.fill",
+                tint: Theme.success
+            )
+        }
+        if count >= 2 {
+            return .init(
+                label: String(format: L("Doğrulanıyor • %lld tarama"), count),
+                systemImage: "checkmark.circle",
+                tint: Theme.accent
+            )
+        }
+        return .init(
+            label: L("Tek tarama"),
+            systemImage: "person.fill",
+            tint: Theme.inkSoft
+        )
+    }
+
+    /// fullDetail'den safety bayraklarını UI grid'i için derler.
+    /// pregnancy_safe / vegan / cruelty_free / fragrance/sulfate/silicone/alcohol-free.
+    /// nil bayraklar gösterilmez, sadece kesin pozitif/negatif olanlar görünür.
+    private var safetyBadges: [SafetyBadge] {
+        guard let d = fullDetail else { return [] }
+        var out: [SafetyBadge] = []
+        if let v = d.pregnancySafe {
+            out.append(.init(
+                label: v ? L("Hamilelikte güvenli") : L("Hamilelikte dikkat"),
+                systemImage: v ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
+                tint: v ? Theme.success : Theme.alert
+            ))
+        }
+        if let v = d.vegan {
+            out.append(.init(
+                label: v ? L("Vegan") : L("Hayvansal içerik"),
+                systemImage: v ? "leaf.fill" : "pawprint.fill",
+                tint: v ? Theme.success : Theme.inkSoft
+            ))
+        }
+        if d.crueltyFree == true {
+            out.append(.init(label: L("Cruelty-free"), systemImage: "hand.raised.fill", tint: Theme.success))
+        }
+        if let v = d.fragranceFree, v {
+            out.append(.init(label: L("Parfümsüz"), systemImage: "nose", tint: Theme.success))
+        }
+        if let v = d.sulfateFree, v {
+            out.append(.init(label: L("Sülfatsız"), systemImage: "drop.fill", tint: Theme.success))
+        }
+        if let v = d.siliconeFree, v {
+            out.append(.init(label: L("Silikonsuz"), systemImage: "circle.dotted", tint: Theme.success))
+        }
+        if let v = d.alcoholFree, v {
+            out.append(.init(label: L("Alkolsüz"), systemImage: "drop", tint: Theme.success))
+        }
+        return out
+    }
+
     private static func shortDate(_ date: Date) -> String {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "tr_TR")
+        f.locale = LanguageManager.shared.effectiveLocale
         f.dateFormat = "d MMM yyyy"
         return f.string(from: date)
     }

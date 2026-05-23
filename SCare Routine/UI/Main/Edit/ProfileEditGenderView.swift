@@ -20,7 +20,7 @@ struct ProfileEditGenderView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Cinsiyet bilgisi hormonel öneriler için kullanılır. Tamamen opsiyonel.")
+                        Text(L("Cinsiyet bilgisi hormonel öneriler için kullanılır. Tamamen opsiyonel."))
                             .font(Theme.Typo.body)
                             .foregroundStyle(Theme.inkSoft)
                             .padding(.top, 4)
@@ -49,18 +49,18 @@ struct ProfileEditGenderView: View {
                     .padding(.bottom, 24)
                 }
             }
-            .navigationTitle("Cinsiyet")
+            .navigationTitle(L("Cinsiyet"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("İptal") { dismiss() }
+                    Button(L("İptal")) { dismiss() }
                         .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isSaving {
                         ProgressView()
                     } else {
-                        Button("Kaydet", action: save)
+                        Button(L("Kaydet"), action: save)
                             .disabled(selected == nil)
                             .fontWeight(.semibold)
                     }
@@ -79,10 +79,10 @@ struct ProfileEditGenderView: View {
 
     private func subtitle(for g: OnboardingGender) -> String? {
         switch g {
-        case .female: return "Hormonel döngü, cycle takibi"
-        case .male: return "Erkek cildi için özel ipuçları"
-        case .nonBinary: return "Nötr öneriler"
-        case .preferNotToSay: return "Bu bilgiyi paylaşmıyorum"
+        case .female: return L("gender_female_subtitle")
+        case .male: return L("gender_male_subtitle")
+        case .nonBinary: return L("gender_nonbinary_subtitle")
+        case .preferNotToSay: return L("gender_prefer_not_subtitle")
         }
     }
 

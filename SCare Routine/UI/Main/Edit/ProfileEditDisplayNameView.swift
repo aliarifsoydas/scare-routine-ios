@@ -30,18 +30,18 @@ struct ProfileEditDisplayNameView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("SCare'in seni nasıl anmasını istersin?")
+                        Text(L("SCare'in seni nasıl anmasını istersin?"))
                             .font(Theme.Typo.body)
                             .foregroundStyle(Theme.inkSoft)
                             .padding(.top, 4)
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Ad")
+                            Text(L("Ad"))
                                 .font(Theme.Typo.caption.weight(.medium))
                                 .foregroundStyle(Theme.inkMute)
                                 .textCase(.uppercase)
 
-                            TextField("Adın", text: $name)
+                            TextField(L("Adın"), text: $name)
                                 .font(Theme.Typo.body)
                                 .foregroundStyle(Theme.ink)
                                 .textInputAutocapitalization(.words)
@@ -67,10 +67,10 @@ struct ProfileEditDisplayNameView: View {
                                     .font(.system(size: 14))
                                     .foregroundStyle(Theme.alert)
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Yakında")
+                                    Text(L("Yakında"))
                                         .font(Theme.Typo.caption.weight(.semibold))
                                         .foregroundStyle(Theme.ink)
-                                    Text("İsim düzenleme şu an backend tarafında hazırlanıyor. Çok yakında bu ekrandan değiştirebileceksin.")
+                                    Text(L("İsim düzenleme şu an backend tarafında hazırlanıyor. Çok yakında bu ekrandan değiştirebileceksin."))
                                         .font(Theme.Typo.caption)
                                         .foregroundStyle(Theme.inkSoft)
                                         .fixedSize(horizontal: false, vertical: true)
@@ -94,18 +94,18 @@ struct ProfileEditDisplayNameView: View {
                     .padding(.bottom, 24)
                 }
             }
-            .navigationTitle("Adın")
+            .navigationTitle(L("Adın"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("İptal") { dismiss() }
+                    Button(L("İptal")) { dismiss() }
                         .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isSaving {
                         ProgressView()
                     } else {
-                        Button("Kaydet", action: save)
+                        Button(L("Kaydet"), action: save)
                             .disabled(!canSave)
                             .fontWeight(.semibold)
                     }

@@ -17,6 +17,10 @@ enum Endpoint {
 
     // Ürün katalog
     case recognizeProduct
+    case quickEvaluateProduct
+    case confirmRecognitionAttempt(id: String)
+    case attachCleanPhoto(id: String)
+    case attachBackPhoto(id: String)
     case productByBarcode(String)
     case searchProducts(query: String)
     case productDetail(id: String)
@@ -33,6 +37,7 @@ enum Endpoint {
 
     // Rutinler
     case listRoutines
+    case routineDetail(id: String)
     case createRoutine
     case updateRoutine(id: String)
     case deleteRoutine(id: String)
@@ -48,6 +53,16 @@ enum Endpoint {
     case postSkinLog
     case listSkinLogs(from: String, to: String)
     case skinTrends(metric: String, days: Int)
+    case postSkinToneEstimate
+
+    // Notifications
+    case notificationTemplates(locale: String)
+    case pendingNotifications
+    case ackNotification(id: Int)
+    case registerDevice
+
+    // Health metrics
+    case postHealthMetricsBulk
 
     // Cycle
     case listCycles
@@ -59,6 +74,7 @@ enum Endpoint {
     case aiRoutineReview
     case aiProductExplain
     case aiSkinMeta
+    case aiRecommendRoutine
     case aiUsage
 
     // Sistem
@@ -79,6 +95,10 @@ enum Endpoint {
         case .exportData: return "/me/export"
 
         case .recognizeProduct: return "/products/recognize"
+        case .quickEvaluateProduct: return "/products/quick-evaluate"
+        case .confirmRecognitionAttempt(let id): return "/products/recognition/\(id)/confirm"
+        case .attachCleanPhoto(let id): return "/products/recognition/\(id)/attach-clean"
+        case .attachBackPhoto(let id): return "/products/recognition/\(id)/attach-back"
         case .productByBarcode(let bc): return "/products/by-barcode/\(bc)"
         case .searchProducts(let q):
             let qs = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
@@ -94,6 +114,7 @@ enum Endpoint {
         case .signUpload: return "/uploads/sign"
 
         case .listRoutines: return "/me/routines"
+        case .routineDetail(let id): return "/me/routines/\(id)"
         case .createRoutine: return "/me/routines"
         case .updateRoutine(let id): return "/me/routines/\(id)"
         case .deleteRoutine(let id): return "/me/routines/\(id)"
@@ -106,7 +127,14 @@ enum Endpoint {
 
         case .postSkinLog: return "/me/skin-logs"
         case .listSkinLogs(let from, let to): return "/me/skin-logs?from=\(from)&to=\(to)"
-        case .skinTrends(let m, let d): return "/me/skin-trends?metric=\(m)&days=\(d)"
+        case .skinTrends(let m, let d): return "/me/skin-logs/trends?metric=\(m)&days=\(d)"
+        case .postSkinToneEstimate: return "/me/skin-tone-estimate"
+
+        case .notificationTemplates(let locale): return "/notifications/templates?locale=\(locale)"
+        case .pendingNotifications: return "/me/notifications/pending"
+        case .ackNotification(let id): return "/me/notifications/\(id)/ack"
+        case .registerDevice: return "/me/devices/register"
+        case .postHealthMetricsBulk: return "/me/health-metrics/bulk"
 
         case .listCycles: return "/me/cycles"
         case .createCycle: return "/me/cycles"
@@ -116,6 +144,7 @@ enum Endpoint {
         case .aiRoutineReview: return "/ai/routine-review"
         case .aiProductExplain: return "/ai/product-explain"
         case .aiSkinMeta: return "/ai/skin-meta"
+        case .aiRecommendRoutine: return "/ai/recommend-routine"
         case .aiUsage: return "/ai/usage"
 
         case .health: return "/health"
@@ -126,10 +155,14 @@ enum Endpoint {
     var method: HTTPMethod {
         switch self {
         case .authApple, .authRefresh, .authLogout,
-             .postConsent, .recognizeProduct, .verifyProduct,
+             .postConsent, .recognizeProduct, .quickEvaluateProduct,
+             .confirmRecognitionAttempt,
+             .attachCleanPhoto, .attachBackPhoto,
+             .verifyProduct,
              .addMyProduct, .signUpload, .createRoutine,
-             .postLog, .postSkinLog, .createCycle,
-             .aiRoutineReview, .aiProductExplain, .aiSkinMeta:
+             .postLog, .postSkinLog, .postSkinToneEstimate, .createCycle,
+             .ackNotification, .registerDevice, .postHealthMetricsBulk,
+             .aiRoutineReview, .aiProductExplain, .aiSkinMeta, .aiRecommendRoutine:
             return .post
 
         case .updateProfile, .setRoutineSteps:

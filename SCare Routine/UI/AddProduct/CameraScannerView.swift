@@ -28,6 +28,10 @@ struct CameraScannerView: UIViewControllerRepresentable {
     /// preview'tan en yakın frame'i yakalar.
     @Binding var requestSnapshot: Bool
 
+    /// Reset trigger — parent değiştirince (front→back geçişi gibi) scanner restart
+    /// olur, eski highlights/recognized items temizlenir, capture state reset olur.
+    var resetGeneration: Int = 0
+
     // MARK: - Hayat döngüsü
 
     static var isSupported: Bool {
@@ -48,8 +52,11 @@ struct CameraScannerView: UIViewControllerRepresentable {
             recognizesMultipleItems: true,
             isHighFrameRateTrackingEnabled: false,
             isPinchToZoomEnabled: true,
-            isGuidanceEnabled: true,
-            isHighlightingEnabled: true
+            isGuidanceEnabled: false,
+            // Highlights kapalı: ekranda görsel overlay yok. OCR arka planda devam.
+            // Apple'ın "clear all highlights" public API'sı yok; restart de tutarsız
+            // temizliyor — bu nedenle baştan göstermiyoruz.
+            isHighlightingEnabled: false
         )
         scanner.delegate = context.coordinator
         context.coordinator.scanner = scanner
@@ -58,9 +65,11 @@ struct CameraScannerView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: DataScannerViewController, context: Context) {
-        if requestSnapshot, let onCapturePhoto {
+        if requestSnapshot, !context.coordinator.isCapturing, let onCapturePhoto {
+            context.coordinator.isCapturing = true
             context.coordinator.captureSnapshot { image in
                 DispatchQueue.main.async {
+                    context.coordinator.isCapturing = false
                     self.requestSnapshot = false
                     if let image { onCapturePhoto(image) }
                 }
@@ -83,8 +92,21 @@ struct CameraScannerView: UIViewControllerRepresentable {
         weak var scanner: DataScannerViewController?
         private var collectedTextLines: [String] = []
         private var lastEmittedBarcode: String?
+        var lastResetGeneration: Int = 0
+        var isCapturing: Bool = false
 
         init(_ parent: CameraScannerView) { self.parent = parent }
+
+        /// Scanner'ı sıfırla — eski highlights, recognized items, capture state temizle.
+        /// Front→back geçişinde çağrılır.
+        func resetScanner() {
+            guard let scanner else { return }
+            scanner.stopScanning()
+            collectedTextLines.removeAll()
+            lastEmittedBarcode = nil
+            isCapturing = false
+            try? scanner.startScanning()
+        }
 
         func dataScanner(_ scanner: DataScannerViewController,
                          didAdd addedItems: [RecognizedItem],

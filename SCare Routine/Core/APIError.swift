@@ -14,20 +14,25 @@ enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL: return "Geçersiz adres."
-        case .requestFailed(let err): return "İstek başarısız: \(err.localizedDescription)"
-        case .invalidResponse: return "Sunucudan beklenmedik yanıt."
-        case .unauthorized: return "Oturumun süresi doldu. Lütfen tekrar giriş yap."
-        case .forbidden: return "Bu işlem için yetkin yok."
-        case .notFound: return "İstenen kayıt bulunamadı."
+        case .invalidURL: return L("Geçersiz adres.")
+        case .requestFailed(let err):
+            let fmt = L("İstek başarısız: %@")
+            return String(format: fmt, err.localizedDescription)
+        case .invalidResponse: return L("Sunucudan beklenmedik yanıt.")
+        case .unauthorized: return L("Oturumun süresi doldu. Lütfen tekrar giriş yap.")
+        case .forbidden: return L("Bu işlem için yetkin yok.")
+        case .notFound: return L("İstenen kayıt bulunamadı.")
         case .rateLimited(let retry):
-            if let retry { return "Çok fazla istek. \(retry) saniye sonra tekrar dene." }
-            return "Çok fazla istek. Birazdan tekrar dene."
+            if let retry {
+                let fmt = L("Çok fazla istek. %lld saniye sonra tekrar dene.")
+                return String(format: fmt, retry)
+            }
+            return L("Çok fazla istek. Birazdan tekrar dene.")
         case .server(_, let msg, let hint):
             if let hint { return "\(msg) (\(hint))" }
             return msg
-        case .decodingFailed: return "Yanıt çözümlenemedi."
-        case .networkOffline: return "İnternet bağlantın yok gibi görünüyor."
+        case .decodingFailed: return L("Yanıt çözümlenemedi.")
+        case .networkOffline: return L("İnternet bağlantın yok gibi görünüyor.")
         }
     }
 }

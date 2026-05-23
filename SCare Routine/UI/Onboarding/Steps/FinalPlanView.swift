@@ -28,7 +28,7 @@ struct FinalPlanView: View {
             editHint
         } cta: {
             OnboardingPrimaryButton(
-                title: "Hadi başlayalım ✨",
+                title: L("Hadi başlayalım ✨"),
                 isEnabled: !flow.isSubmitting,
                 isLoading: flow.isSubmitting,
                 hapticStyle: .heavy
@@ -68,7 +68,7 @@ struct FinalPlanView: View {
             .scaleEffect(checkScale)
             .shadow(color: Theme.ink.opacity(0.08), radius: 10, x: 0, y: 4)
 
-            Text("Profilin hazır!")
+            Text(L("Profilin hazır!"))
                 .font(Theme.Typo.title)
                 .foregroundStyle(Theme.ink)
                 .multilineTextAlignment(.center)
@@ -87,16 +87,16 @@ struct FinalPlanView: View {
 
     private var subtitle: String {
         if let name = userName, !name.isEmpty {
-            return "\(name), sana özel hazırladım."
+            return "\(name), \(L("sana özel hazırladım."))"
         }
-        return "Sana özel hazırladım."
+        return L("Sana özel hazırladım.")
     }
 
     // MARK: - "Senin için aktif" özet kartı
 
     private var activeCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Senin için aktif")
+            Text(L("Senin için aktif"))
                 .font(Theme.Typo.caption.weight(.semibold))
                 .foregroundStyle(Theme.inkSoft)
                 .textCase(.uppercase)
@@ -106,28 +106,28 @@ struct FinalPlanView: View {
             VStack(spacing: 0) {
                 summaryRow(
                     symbol: "drop.fill",
-                    label: "Cilt tipi",
+                    label: L("Cilt tipi"),
                     value: skinTypeShort,
                     hint: skinTypeHint
                 )
                 rowDivider
                 summaryRow(
                     symbol: "square.grid.2x2.fill",
-                    label: "Kategoriler",
+                    label: L("Kategoriler"),
                     value: categoriesValue,
                     hint: nil
                 )
                 rowDivider
                 summaryRow(
                     symbol: "heart.text.square",
-                    label: "Sağlık",
+                    label: L("Sağlık"),
                     value: healthSummary,
                     hint: nil
                 )
                 rowDivider
                 summaryRow(
                     symbol: flow.photoMode == .metricsOnly ? "lock.fill" : "photo.on.rectangle.angled",
-                    label: "Foto modu",
+                    label: L("Foto modu"),
                     value: flow.photoModeDisplayTR,
                     hint: nil
                 )
@@ -203,7 +203,7 @@ struct FinalPlanView: View {
         if let t = flow.selectedSkinType {
             return t.displayTR
         }
-        return "Bilinmiyor"
+        return L("Bilinmiyor")
     }
 
     /// Cilt tipinin altında gösterilecek ingredient ipucu (varsa)
@@ -214,8 +214,8 @@ struct FinalPlanView: View {
 
     private var categoriesValue: String {
         let list = flow.selectedCategoriesDisplayTR
-        if list.isEmpty { return "Tümü" }
-        if list.count == 4 { return "Tümü" }
+        if list.isEmpty { return L("Tümü") }
+        if list.count == 4 { return L("Tümü") }
         return list.joined(separator: ", ")
     }
 
@@ -226,26 +226,22 @@ struct FinalPlanView: View {
 
         // Doğum tarihi (manuel öncelikli)
         if flow.manualBirthDate != nil || flow.healthKit?.birthDate != nil {
-            bits.append("doğum tarihi")
+            bits.append(L("doğum tarihi"))
         }
         // Cinsiyet
         if flow.manualBiologicalSex != nil || flow.healthKit?.biologicalSex != nil {
-            bits.append("cinsiyet")
+            bits.append(L("cinsiyet"))
         }
         // Cilt tonu (yalnızca HK verir)
         if flow.healthKit?.fitzpatrickType != nil {
-            bits.append("cilt tonu")
+            bits.append(L("cilt tonu"))
         }
         // Uyku
         if flow.manualSleepHours != nil || flow.healthKit?.avgSleepHoursLast30Days != nil {
-            bits.append("uyku")
-        }
-        // Su
-        if flow.manualWaterGlasses != nil || flow.healthKit?.avgWaterGlassesLast30Days != nil {
-            bits.append("su")
+            bits.append(L("uyku"))
         }
 
-        if bits.isEmpty { return "Atlandı" }
+        if bits.isEmpty { return L("Atlandı") }
         if bits.count > 2 {
             return "\(bits.prefix(2).joined(separator: ", ")) +\(bits.count - 2)"
         }
@@ -256,7 +252,7 @@ struct FinalPlanView: View {
 
     private var nextStepsCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Sıradakiler")
+            Text(L("Sıradakiler"))
                 .font(Theme.Typo.caption.weight(.semibold))
                 .foregroundStyle(Theme.inkSoft)
                 .textCase(.uppercase)
@@ -265,13 +261,13 @@ struct FinalPlanView: View {
 
             VStack(alignment: .leading, spacing: 14) {
                 nextRow(index: 1,
-                        title: "İlk rutinini oluştur",
-                        subtitle: "sabah / akşam")
+                        title: L("İlk rutinini oluştur"),
+                        subtitle: L("sabah / akşam"))
                 nextRow(index: 2,
-                        title: "İlk ürününü ekle",
-                        subtitle: "fotoğrafla, otomatik taranır")
+                        title: L("İlk ürününü ekle"),
+                        subtitle: L("fotoğrafla, otomatik taranır"))
                 nextRow(index: 3,
-                        title: "Cilt günlüğüne başla",
+                        title: L("Cilt günlüğüne başla"),
                         subtitle: nil)
             }
             .padding(16)
@@ -323,7 +319,7 @@ struct FinalPlanView: View {
             Image(systemName: "info.circle")
                 .font(.system(size: 13, weight: .regular))
                 .foregroundStyle(Theme.inkMute)
-            Text("Düzenlemek istersen üst köşedeki geri okuyla cevaplarına dönebilirsin.")
+            Text(L("Düzenlemek istersen üst köşedeki geri okuyla cevaplarına dönebilirsin."))
                 .font(.system(size: 12, weight: .regular))
                 .foregroundStyle(Theme.inkMute)
                 .fixedSize(horizontal: false, vertical: true)

@@ -19,6 +19,7 @@ enum OnboardingStep: Int, CaseIterable, Identifiable {
     case essentials
     case skinType
     case healthSync
+    case skinTone        // selfie ile fitzpatrick tahmini (opsiyonel)
     case preferences
     case finalPlan
 
@@ -62,10 +63,10 @@ enum OnboardingGender: String, CaseIterable, Identifiable {
 
     var displayTR: String {
         switch self {
-        case .female: return "Kadın"
-        case .male: return "Erkek"
-        case .nonBinary: return "Non-binary"
-        case .preferNotToSay: return "Belirtmek istemiyorum"
+        case .female: return L("gender_female")
+        case .male: return L("gender_male")
+        case .nonBinary: return L("gender_nonbinary")
+        case .preferNotToSay: return L("gender_prefer_not_to_say")
         }
     }
 }
@@ -113,13 +114,19 @@ final class OnboardingFlow {
     var manualBirthDate: Date? = nil
     var manualBiologicalSex: String? = nil      // "female"|"male"|"non_binary"|"prefer_not_to_say"
     var manualSleepHours: Double? = nil
-    var manualWaterGlasses: Int? = nil
+    // manualWaterGlasses kaldırıldı — feature drop
     /// "never" | "occasionally" | "daily" (lifestyle.smoking)
     var manualSmoking: String? = nil
     /// "never" | "rarely" | "weekly" | "daily" (lifestyle.alcohol_frequency)
     var manualAlcohol: String? = nil
     /// female gender seçildiyse sorulur — true (hamile), false (hayır), nil (cevap yok)
     var pregnancyAnswer: Bool? = nil
+
+    /// SkinToneEstimateView'dan gelen tahmin (1-6). HealthKit fitzpatrick yoksa
+    /// kullanılır. Manuel override edilebilir.
+    var estimatedFitzpatrick: Int? = nil
+    /// 0..1 — düşükse warning gösteririz.
+    var estimatedSkinToneConfidence: Double? = nil
 
     // Step 5: Preferences — saç, vücut, makyaj tercihleri + foto modu
     // Kategoriler onboarding'den kaldırıldı (arşivden inferred).
@@ -162,20 +169,20 @@ final class OnboardingFlow {
         return arr
     }
 
-    /// FinalPlanView için TR display string'leri
+    /// FinalPlanView için display string'leri (locale-aware)
     var selectedCategoriesDisplayTR: [String] {
         var arr: [String] = []
-        if categorySkincare { arr.append("Cilt bakımı") }
-        if categoryHaircare { arr.append("Saç bakımı") }
-        if categoryBodycare { arr.append("Vücut bakımı") }
-        if categoryMakeup   { arr.append("Makyaj") }
+        if categorySkincare { arr.append(L("Cilt bakımı")) }
+        if categoryHaircare { arr.append(L("Saç bakımı")) }
+        if categoryBodycare { arr.append(L("Vücut bakımı")) }
+        if categoryMakeup   { arr.append(L("Makyaj")) }
         return arr
     }
 
     var photoModeDisplayTR: String {
         switch photoMode {
-        case .metricsOnly: return "Sadece veri saklanır"
-        case .photoKept:   return "Fotoğraflar saklanır"
+        case .metricsOnly: return L("Sadece veri saklanır")
+        case .photoKept:   return L("Fotoğraflar saklanır")
         }
     }
 
@@ -184,7 +191,7 @@ final class OnboardingFlow {
         if let t = selectedSkinType {
             return "\(t.displayTR) — \(t.revealHintTR)"
         }
-        return "Bilinmiyor (sonradan belirleyeceğiz)"
+        return L("Bilinmiyor (sonradan belirleyeceğiz)")
     }
 
     /// Manuel girilen veya HealthKit'ten gelen doğum tarihi (manuel öncelikli)
@@ -208,10 +215,7 @@ final class OnboardingFlow {
         manualSleepHours ?? healthKit?.avgSleepHoursLast30Days
     }
 
-    /// Manuel veya HealthKit'ten gelen su (manuel öncelikli)
-    private var effectiveWaterGlasses: Int? {
-        manualWaterGlasses ?? healthKit?.avgWaterGlassesLast30Days
-    }
+    // effectiveWaterGlasses kaldırıldı — feature drop
 
     // MARK: - Navigation
 
@@ -269,18 +273,16 @@ final class OnboardingFlow {
     // MARK: - Payload üretimi
 
     func buildProfileRequest() -> ProfileUpdateRequest {
-        // Lifestyle: manuel veya HealthKit'ten gelen uyku/su + onboarding'de toplanan smoking/alcohol
+        // Lifestyle: manuel veya HealthKit'ten gelen uyku + onboarding'de toplanan smoking/alcohol
         let lifestyle: LifestylePayload? = {
             let sleep = effectiveSleepHours
-            let water = effectiveWaterGlasses
             let smoking = manualSmoking
             let alcohol = manualAlcohol
-            if sleep == nil && water == nil && smoking == nil && alcohol == nil { return nil }
+            if sleep == nil && smoking == nil && alcohol == nil { return nil }
             return LifestylePayload(
                 smoking: smoking,
                 alcoholFrequency: alcohol,
-                sleepHoursAvg: sleep,
-                waterGlassesPerDay: water
+                sleepHoursAvg: sleep
             )
         }()
 
@@ -307,7 +309,8 @@ final class OnboardingFlow {
             makeupPref: makeupDict,
             birthDate: effectiveBirthDateISO,
             gender: effectiveBiologicalSex,
-            fitzpatrickType: healthKit?.fitzpatrickType,
+            // Tercih sırası: HealthKit (Apple Health) > Selfie tahmini (skinTone step)
+            fitzpatrickType: healthKit?.fitzpatrickType ?? estimatedFitzpatrick,
             lifestyle: lifestyle,
             country: country,
             pregnancy: pregnancyAnswer,
@@ -336,22 +339,22 @@ extension SkinType {
     /// Onboarding kartlarında gösterilen ana etiket (TR)
     var displayTR: String {
         switch self {
-        case .oily:      return "Yağlı"
-        case .dry:       return "Kuru"
-        case .combo:     return "Karma"
-        case .normal:    return "Normal"
-        case .sensitive: return "Hassas"
+        case .oily:      return L("skin_type_oily")
+        case .dry:       return L("skin_type_dry")
+        case .combo:     return L("skin_type_combination")
+        case .normal:    return L("skin_type_normal")
+        case .sensitive: return L("skin_type_sensitive")
         }
     }
 
     /// Kart altındaki kısa açıklama (TR)
     var subtitleTR: String {
         switch self {
-        case .oily:      return "T-zone parlıyor, gözenekler belirgin"
-        case .dry:       return "Çekiyor, pul pul, mat görünür"
-        case .combo:     return "T-zone yağlı, yanaklar kuru"
-        case .normal:    return "Dengeli, pek sorun yok"
-        case .sensitive: return "Kolayca kızarıyor, tepki verir"
+        case .oily:      return L("skin_type_oily_subtitle")
+        case .dry:       return L("skin_type_dry_subtitle")
+        case .combo:     return L("skin_type_combination_subtitle")
+        case .normal:    return L("skin_type_normal_subtitle")
+        case .sensitive: return L("skin_type_sensitive_subtitle")
         }
     }
 
@@ -371,26 +374,26 @@ extension SkinType {
     var revealTextTR: String {
         switch self {
         case .oily:
-            return "Niacinamide, salisilik asit (BHA) ve oil-free formüller önereceğim."
+            return L("skin_type_oily_reveal")
         case .dry:
-            return "Hyaluronik asit, ceramide ve zengin moisturizer'lara odaklanacağım."
+            return L("skin_type_dry_reveal")
         case .combo:
-            return "T-zone için BHA, yanaklar için ceramide karışık önerilerim olacak."
+            return L("skin_type_combination_reveal")
         case .normal:
-            return "Hafif aktifler ve dengeli rutinler önereceğim."
+            return L("skin_type_normal_reveal")
         case .sensitive:
-            return "Centella, allantoin ve kokusuz formüllere öncelik vereceğim."
+            return L("skin_type_sensitive_reveal")
         }
     }
 
     /// FinalPlan özet kartında kullanılan kısa ingredient hint
     var revealHintTR: String {
         switch self {
-        case .oily:      return "Niacinamide, BHA"
-        case .dry:       return "Hyaluronik asit, ceramide"
-        case .combo:     return "BHA + ceramide"
-        case .normal:    return "Dengeli aktifler"
-        case .sensitive: return "Centella, allantoin"
+        case .oily:      return L("skin_type_oily_hint")
+        case .dry:       return L("skin_type_dry_hint")
+        case .combo:     return L("skin_type_combination_hint")
+        case .normal:    return L("skin_type_normal_hint")
+        case .sensitive: return L("skin_type_sensitive_hint")
         }
     }
 }

@@ -26,11 +26,11 @@ struct SkinView: View {
 
     /// Trend metric → görünür Türkçe etiket
     private let metricLabels: [(key: String, label: String)] = [
-        ("hydration", "Nem"),
-        ("redness", "Kızarıklık"),
-        ("oiliness", "Yağ"),
-        ("breakouts", "Sivilce"),
-        ("overall", "Genel")
+        ("hydration", L("Nem")),
+        ("redness", L("Kızarıklık")),
+        ("oiliness", L("Yağlılık")),
+        ("breakouts", L("Sivilce")),
+        ("overall", L("Genel"))
     ]
 
     var body: some View {
@@ -61,7 +61,7 @@ struct SkinView: View {
                     await reloadAll()
                 }
             }
-            .navigationTitle("Cilt")
+            .navigationTitle(L("Cilt"))
             .navigationBarTitleDisplayMode(.large)
             .task(id: appState.currentUser?.id) {
                 await reloadAll()
@@ -93,18 +93,19 @@ struct SkinView: View {
     private var greetingPrefix: String {
         let hour = Calendar.current.component(.hour, from: .now)
         switch hour {
-        case 5..<11: return "Günaydın"
-        case 11..<17: return "İyi günler"
-        case 17..<22: return "İyi akşamlar"
-        default: return "İyi geceler"
+        case 5..<11: return L("Günaydın")
+        case 11..<17: return L("İyi günler")
+        case 17..<22: return L("İyi akşamlar")
+        default: return L("İyi geceler")
         }
     }
 
     private var todayLongDate: String {
         let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "tr_TR")
+        fmt.locale = LanguageManager.shared.effectiveLocale
         fmt.dateFormat = "d MMMM EEEE"
-        return "Bugün — " + fmt.string(from: .now)
+        // String(localized:) catalog'dan "Bugün" → "Today" çevirisini alır.
+        return L("Bugün") + " — " + fmt.string(from: .now)
     }
 
     // MARK: - Today CTA
@@ -124,10 +125,10 @@ struct SkinView: View {
                         .foregroundStyle(Theme.onAccent)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(hasTodayLog ? "Bugünü güncelle" : "Bugünü değerlendir")
+                    Text(hasTodayLog ? L("Bugünü güncelle") : L("Bugünü değerlendir"))
                         .font(Theme.Typo.headline)
                         .foregroundStyle(Theme.onAccent)
-                    Text("Birkaç saniye sürer")
+                    Text(L("Birkaç saniye sürer"))
                         .font(Theme.Typo.caption)
                         .foregroundStyle(Theme.onAccent.opacity(0.8))
                 }
@@ -209,7 +210,7 @@ struct SkinView: View {
 
     private func weekdayShort(_ date: Date) -> String {
         let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "tr_TR")
+        fmt.locale = LanguageManager.shared.effectiveLocale
         fmt.dateFormat = "EE"
         return fmt.string(from: date)
     }
@@ -237,11 +238,11 @@ struct SkinView: View {
     private var trendsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Trendlerin")
+                Text(L("Trendlerin"))
                     .font(Theme.Typo.headline)
                     .foregroundStyle(Theme.ink)
                 Spacer()
-                Text("Son 30 gün")
+                Text(L("Son 30 gün"))
                     .font(Theme.Typo.caption)
                     .foregroundStyle(Theme.inkSoft)
             }
@@ -335,7 +336,10 @@ struct SkinView: View {
                         .foregroundStyle(Theme.inkMute)
                 }
                 if let a = avg {
-                    Text(String(format: "ort %.1f", a))
+                    Text({
+                        let avgStr = a.formatted(.number.precision(.fractionLength(1)))
+                        return String(format: L("chart_average_short"), avgStr)
+                    }())
                         .font(.system(size: 10))
                         .foregroundStyle(Theme.inkSoft)
                 }
@@ -349,7 +353,7 @@ struct SkinView: View {
             Image(systemName: "chart.line.uptrend.xyaxis")
                 .font(.system(size: 28, weight: .light))
                 .foregroundStyle(Theme.inkMute)
-            Text("Trendler için en az birkaç gün veri girmen gerek")
+            Text(L("Trendler için en az birkaç gün veri girmen gerek"))
                 .font(Theme.Typo.caption)
                 .foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
@@ -367,13 +371,13 @@ struct SkinView: View {
     @ViewBuilder
     private var recentLogsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Son loglar")
+            Text(L("Son loglar"))
                 .font(Theme.Typo.headline)
                 .foregroundStyle(Theme.ink)
                 .padding(.horizontal, 20)
 
             if logs.isEmpty {
-                Text("Henüz log yok. Bugünü değerlendirerek başla.")
+                Text(L("Henüz log yok. Bugünü değerlendirerek başla."))
                     .font(Theme.Typo.caption)
                     .foregroundStyle(Theme.inkSoft)
                     .padding(.horizontal, 20)
@@ -467,11 +471,11 @@ struct RecentSkinLogCard: View {
             Divider().background(Theme.divider)
 
             VStack(alignment: .leading, spacing: 4) {
-                miniRow("Nem", value: log.selfHydration)
-                miniRow("Kız", value: log.selfRedness)
-                miniRow("Yağ", value: log.selfOiliness)
-                miniRow("Sivilce", value: log.selfBreakouts)
-                miniRow("Genel", value: log.selfOverall)
+                miniRow(L("Nem"), value: log.selfHydration)
+                miniRow(L("Kızarıklık"), value: log.selfRedness)
+                miniRow(L("Yağlılık"), value: log.selfOiliness)
+                miniRow(L("Sivilce"), value: log.selfBreakouts)
+                miniRow(L("Genel"), value: log.selfOverall)
             }
         }
         .padding(12)
@@ -521,7 +525,7 @@ struct RecentSkinLogCard: View {
     private var monthPart: String {
         guard let d = parsedDate else { return "" }
         let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "tr_TR")
+        fmt.locale = LanguageManager.shared.effectiveLocale
         fmt.dateFormat = "MMM"
         return fmt.string(from: d)
     }
@@ -529,7 +533,7 @@ struct RecentSkinLogCard: View {
     private var weekdayPart: String {
         guard let d = parsedDate else { return "" }
         let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "tr_TR")
+        fmt.locale = LanguageManager.shared.effectiveLocale
         fmt.dateFormat = "EEE"
         return fmt.string(from: d)
     }

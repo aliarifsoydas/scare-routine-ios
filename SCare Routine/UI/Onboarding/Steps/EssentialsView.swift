@@ -11,8 +11,8 @@ struct EssentialsView: View {
     var body: some View {
         OnboardingStepContainer {
             OnboardingStepHeader(
-                title: "Başlamadan önce",
-                subtitle: "İki onay verman yeterli.",
+                title: L("Başlamadan önce"),
+                subtitle: L("İki onay verman yeterli."),
                 symbol: "checkmark.shield"
             )
 
@@ -21,11 +21,12 @@ struct EssentialsView: View {
             linksRow
         } cta: {
             OnboardingPrimaryButton(
-                title: "Devam",
+                title: L("Devam"),
                 isEnabled: flow.canProceedFromEssentials
             ) {
                 flow.goNext()
             }
+            .track("continue")
         }
     }
 
@@ -34,15 +35,15 @@ struct EssentialsView: View {
     private var consentCards: some View {
         VStack(spacing: 12) {
             consentRow(
-                title: "Verilerimi saklamayı kabul ediyorum",
-                description: "Hesap, rutin ve profil bilgilerin uygulamada saklanır.",
+                title: L("Verilerimi saklamayı kabul ediyorum"),
+                description: L("Hesap, rutin ve profil bilgilerin uygulamada saklanır."),
                 isOn: $flow.consentAccount,
                 isRequired: true
             )
 
             consentRow(
-                title: "AI cilt analizine izin ver",
-                description: "İstediğin zaman ayarlardan kapatabilirsin.",
+                title: L("AI cilt analizine izin ver"),
+                description: L("İstediğin zaman ayarlardan kapatabilirsin."),
                 isOn: $flow.consentAIProcessing,
                 isRequired: false
             )
@@ -62,7 +63,7 @@ struct EssentialsView: View {
                         .font(Theme.Typo.headline)
                         .foregroundStyle(Theme.ink)
                     if isRequired {
-                        Text("Zorunlu")
+                        Text(L("Zorunlu"))
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -95,7 +96,7 @@ struct EssentialsView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Theme.alert)
-            Text("SCare Routine tıbbi tavsiye değildir.")
+            Text(L("SCare Routine tıbbi tavsiye değildir."))
                 .font(Theme.Typo.caption)
                 .foregroundStyle(Theme.inkSoft)
             Spacer(minLength: 0)
@@ -113,9 +114,9 @@ struct EssentialsView: View {
     private var linksRow: some View {
         HStack(spacing: 8) {
             Link("Gizlilik", destination: URL(string: "https://scare.xflink.co/privacy")!)
-            Text("·").foregroundStyle(Theme.inkSoft)
+            Text(L("·")).foregroundStyle(Theme.inkSoft)
             Link("Şartlar", destination: URL(string: "https://scare.xflink.co/terms")!)
-            Text("·").foregroundStyle(Theme.inkSoft)
+            Text(L("·")).foregroundStyle(Theme.inkSoft)
             Link("KVKK", destination: URL(string: "https://scare.xflink.co/kvkk")!)
             Spacer(minLength: 0)
         }

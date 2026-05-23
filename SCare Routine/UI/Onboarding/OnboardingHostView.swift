@@ -35,6 +35,7 @@ public struct OnboardingHostView: View {
                         case .essentials:  EssentialsView(flow: flow)
                         case .skinType:    SkinTypeView(flow: flow)
                         case .healthSync:  HealthSyncView(flow: flow)
+                        case .skinTone:    SkinToneEstimateView(flow: flow)
                         case .preferences: PreferencesView(flow: flow)
                         case .finalPlan:   FinalPlanView(flow: flow, userName: displayName, onStart: submit)
                         }
@@ -42,14 +43,20 @@ public struct OnboardingHostView: View {
                     .transition(transitionForCurrentDirection)
                     .id(flow.step)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Telemetry: step değişince Group .id refresh olur, .telemetryScreen
+                    // modifier onAppear'da screen event log'lar. Child view'lar Env'den
+                    // bu prefix'i alır, içindeki .track("...") modifier'ları otomatik birleşir.
+                    .telemetryScreen("Onboarding.\(flow.step)")
                 }
                 .opacity(showPreparing ? 0 : 1)
 
                 // Hazırlanıyor animasyonu — submit basıldıktan sonra üstte
                 if showPreparing {
                     PreparingPlanView {
-                        // Animasyon bitti → gerçek phase geçişi
-                        Task { await appState.bootstrap() } // güncel /me ile main'e
+                        // Animation %100'e ulaşıp tamamlandı → şimdi profileCompleted
+                        // set edilir, ContentView main'e geçer.
+                        appState.finalizeOnboarding()
+                        Task { await appState.bootstrap() }
                     }
                     .transition(.opacity.combined(with: .scale(scale: 1.02)))
                 }
@@ -62,12 +69,13 @@ public struct OnboardingHostView: View {
         .onAppear {
             // Cihaz locale'i flow'a aktar
             flow.locale = appState.locale
+            // İlk screen view (step view'lerin kendi .telemetryScreen'leri ile devam)
         }
-        .alert("Bir sorun oluştu", isPresented: Binding(
+        .alert(L("Bir sorun oluştu"), isPresented: Binding(
             get: { errorAlert != nil },
             set: { if !$0 { errorAlert = nil } }
         )) {
-            Button("Tamam") { errorAlert = nil }
+            Button(L("Tamam")) { errorAlert = nil }
         } message: {
             Text(errorAlert ?? "")
         }
@@ -106,7 +114,7 @@ public struct OnboardingHostView: View {
             .disabled(!flow.step.canGoBack)
             .opacity(flow.step.canGoBack ? 1 : 0)
             .frame(width: 44, alignment: .leading)
-            .accessibilityLabel("Geri")
+            .accessibilityLabel(L("Geri"))
 
             // Orta: kalın linear progress (Cal AI tarzı). Sayaç KALDIRILDI —
             // bar tek başına yeterince anlatıyor.
@@ -213,7 +221,7 @@ public struct OnboardingHostView: View {
                 showPreparing = false
                 let msg: String
                 if let api = error as? APIError {
-                    msg = api.errorDescription ?? "Bilinmeyen bir hata oluştu."
+                    msg = api.errorDescription ?? L("Bilinmeyen bir hata oluştu.")
                 } else {
                     msg = error.localizedDescription
                 }

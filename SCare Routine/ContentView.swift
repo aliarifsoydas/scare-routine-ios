@@ -10,6 +10,8 @@ import SwiftUI
 /// Root view — AppState.phase'e göre uygun ekrana yönlendirir.
 struct ContentView: View {
     @State private var appState = AppState()
+    @State private var languageManager = LanguageManager.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -27,9 +29,30 @@ struct ContentView: View {
             }
         }
         .environment(appState)
+        .environment(languageManager)
+        .environment(\.locale, languageManager.effectiveLocale)
+        // NOT: .id(languageManager.current) ile view tree rebuild edilirse
+        // tab/navigation state sıfırlanıyor (Settings → ana sayfaya atıyor).
+        // Restart-required pattern uygulandığı için anlık SwiftUI refresh'e
+        // gerek yok; user app'i kapatıp açınca yeni dil ile boot olur.
         .tint(Theme.accent)
         .task {
             await appState.bootstrap()
+            // İlk açılışta HealthKit'ten:
+            //  1) daily sleep history backend'e push (90 gün init)
+            //  2) son 7 günün ortalamasını profile.lifestyle'a yansıt
+            await appState.syncHealthKitHistory()
+            await appState.syncHealthKitSleepToProfile()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Her foreground transition'da delta sync
+            // (Apple Watch sleep tracking güncel veriyi yansıt)
+            if newPhase == .active {
+                Task {
+                    await appState.syncHealthKitHistory()
+                    await appState.syncHealthKitSleepToProfile()
+                }
+            }
         }
     }
 }
@@ -73,10 +96,10 @@ private struct SignInScreenView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 
                 VStack(spacing: 10) {
-                    Text("SCare Routine")
+                    Text(verbatim: "SCare Routine")
                         .font(Theme.Typo.title)
                         .foregroundStyle(Theme.ink)
-                    Text("Kozmetik arşivin ve akıllı rutin asistanın")
+                    Text(L("Kozmetik arşivin ve akıllı rutin asistanın"))
                         .font(Theme.Typo.body)
                         .foregroundStyle(Theme.inkSoft)
                         .multilineTextAlignment(.center)
@@ -100,7 +123,7 @@ private struct SignInScreenView: View {
                         .padding(.horizontal, 28)
                 }
 
-                Text("Devam ederek Gizlilik Politikası ve Kullanım Şartları'nı kabul etmiş olursun.")
+                Text(L("Devam ederek Gizlilik Politikası ve Kullanım Şartları'nı kabul etmiş olursun."))
                     .font(Theme.Typo.caption)
                     .foregroundStyle(Theme.inkMute)
                     .multilineTextAlignment(.center)
@@ -128,7 +151,7 @@ private struct MainPlaceholderView: View {
                         .font(.system(size: 44, weight: .light))
                         .foregroundStyle(Theme.ink)
 
-                    Text("Profilin hazır")
+                    Text(L("Profilin hazır"))
                         .font(Theme.Typo.title)
                         .foregroundStyle(Theme.ink)
 
@@ -138,11 +161,11 @@ private struct MainPlaceholderView: View {
 
                     Spacer()
 
-                    Text("Ana ekran tasarımı geliyor")
+                    Text(L("Ana ekran tasarımı geliyor"))
                         .font(Theme.Typo.caption)
                         .foregroundStyle(Theme.inkMute)
 
-                    Button("Çıkış yap") {
+                    Button(L("Çıkış yap")) {
                         Task { await appState.signOut() }
                     }
                     .font(Theme.Typo.body)

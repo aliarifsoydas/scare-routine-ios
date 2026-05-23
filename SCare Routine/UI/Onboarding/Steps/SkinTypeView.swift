@@ -15,24 +15,26 @@ struct SkinTypeView: View {
 
     /// Skin concerns vocab — backend `skin_concerns` JSON array değerleri.
     /// Key payload'a gider; label kullanıcıya gösterilir.
-    private let concerns: [(key: String, label: String, symbol: String?)] = [
-        ("acne",        "Sivilce",          "bandage.fill"),
-        ("blackheads",  "Siyah nokta",      "circle.dotted.circle"),
-        ("oiliness",    "Yağlanma",         "drop.degreesign"),
-        ("dryness",     "Kuruluk",          "drop"),
-        ("sensitivity", "Hassasiyet",       "exclamationmark.shield"),
-        ("redness",     "Kızarıklık",       "flame"),
-        ("dark_spots",  "Lekeler",          "sparkle.magnifyingglass"),
-        ("wrinkles",    "Kırışıklık",       "scribble.variable"),
-        ("large_pores", "Gözenek",          "circle.grid.cross"),
-        ("dullness",    "Mat görünüm",      "moon.zzz"),
-    ]
+    private var concerns: [(key: String, label: String, symbol: String?)] {
+        [
+            ("acne",        L("Sivilce"),          "bandage.fill"),
+            ("blackheads",  L("Siyah nokta"),      "circle.dotted.circle"),
+            ("oiliness",    L("Yağlanma"),         "drop.degreesign"),
+            ("dryness",     L("Kuruluk"),          "drop"),
+            ("sensitivity", L("Hassasiyet"),       "exclamationmark.shield"),
+            ("redness",     L("Kızarıklık"),       "flame"),
+            ("dark_spots",  L("Lekeler"),          "sparkle.magnifyingglass"),
+            ("wrinkles",    L("Kırışıklık"),       "scribble.variable"),
+            ("large_pores", L("Gözenek"),          "circle.grid.cross"),
+            ("dullness",    L("Mat görünüm"),      "moon.zzz"),
+        ]
+    }
 
     var body: some View {
         OnboardingStepContainer {
             OnboardingStepHeader(
-                title: "Cildini biraz tanıyalım",
-                subtitle: "Önerilerin temelini bu oluşturur.",
+                title: L("Cildini biraz tanıyalım"),
+                subtitle: L("Önerilerin temelini bu oluşturur."),
                 symbol: "drop.fill"
             )
 
@@ -47,6 +49,7 @@ struct SkinTypeView: View {
                         flow.selectedSkinType = type
                         flow.skinTypeAcknowledgedUnknown = false
                     }
+                    .track("skinType.\(type.rawValue)")
                 }
             }
 
@@ -61,7 +64,7 @@ struct SkinTypeView: View {
                 // Bir tip seçildiyse görünür, "Emin değilim"de gizli.
                 if let t = flow.selectedSkinType, !flow.skinTypeAcknowledgedUnknown {
                     OnboardingRevealCard(
-                        title: "\(t.displayTR) seçtin",
+                        title: "\(t.displayTR) \(L("seçtin"))",
                         message: t.revealTextTR,
                         symbol: "checkmark.seal.fill"
                     )
@@ -74,11 +77,12 @@ struct SkinTypeView: View {
                 }
 
                 OnboardingPrimaryButton(
-                    title: "Devam",
+                    title: L("Devam"),
                     isEnabled: flow.canProceedFromSkinType
                 ) {
                     flow.goNext()
                 }
+                .track("continue")
             }
             .animation(
                 .spring(response: 0.45, dampingFraction: 0.78),
@@ -96,10 +100,10 @@ struct SkinTypeView: View {
     private var concernsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Hangi konularda destek istersin?")
+                Text(L("Hangi konularda destek istersin?"))
                     .font(Theme.Typo.body.weight(.semibold))
                     .foregroundStyle(Theme.ink)
-                Text("Birden fazla seçebilirsin (opsiyonel)")
+                Text(L("Birden fazla seçebilirsin (opsiyonel)"))
                     .font(Theme.Typo.caption)
                     .foregroundStyle(Theme.inkMute)
             }
@@ -122,7 +126,7 @@ struct SkinTypeView: View {
                       ? "checkmark.circle.fill"
                       : "questionmark.circle")
                     .font(.system(size: 13, weight: .regular))
-                Text("Emin değilim")
+                Text(L("Emin değilim"))
                     .font(Theme.Typo.caption.weight(.medium))
             }
             .foregroundStyle(flow.skinTypeAcknowledgedUnknown ? Theme.ink : Theme.inkSoft)
@@ -133,7 +137,8 @@ struct SkinTypeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressedScaleButtonStyle())
-        .accessibilityLabel("Emin değilim, sonra belirleriz")
+        .accessibilityLabel(L("Emin değilim, sonra belirleriz"))
+        .track("skinType.unsure")
     }
 }
 

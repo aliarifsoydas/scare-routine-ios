@@ -18,7 +18,7 @@ struct HealthSyncView: View {
     @State private var draftBirthDate: Date = Calendar.current.date(byAdding: .year, value: -25, to: .now) ?? .now
     @State private var draftSex: String? = nil
     @State private var draftSleep: Double = 7.5
-    @State private var draftWater: Int = 8
+    // draftWater kaldırıldı — feature drop
     @State private var draftSmoking: String? = nil       // never | occasionally | daily
     @State private var draftAlcohol: String? = nil       // never | rarely | weekly | daily
     @State private var draftPregnancy: Bool? = nil       // only asked if draftSex == "female"
@@ -30,7 +30,6 @@ struct HealthSyncView: View {
         flow.manualBirthDate != nil
             || flow.manualBiologicalSex != nil
             || flow.manualSleepHours != nil
-            || flow.manualWaterGlasses != nil
     }
 
     /// Health'ten gelen snapshot var ve içinde gerçek veri var mı?
@@ -41,8 +40,8 @@ struct HealthSyncView: View {
     var body: some View {
         OnboardingStepContainer {
             OnboardingStepHeader(
-                title: "Sağlık bilgilerin",
-                subtitle: "Apple Health'ten al ya da elle gir. Hiçbir veri sunucuya yüklenmez.",
+                title: L("Sağlık bilgilerin"),
+                subtitle: L("Apple Health'ten al ya da elle gir. Hiçbir veri sunucuya yüklenmez."),
                 symbol: "heart.text.square"
             )
 
@@ -56,9 +55,10 @@ struct HealthSyncView: View {
                     ))
             }
         } cta: {
-            OnboardingPrimaryButton(title: "Devam") {
+            OnboardingPrimaryButton(title: L("Devam")) {
                 flow.goNext()
             }
+            .track("continue")
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.8), value: hasHealthData)
         .animation(.spring(response: 0.45, dampingFraction: 0.8), value: hasManualData)
@@ -72,8 +72,8 @@ struct HealthSyncView: View {
     private var optionsStack: some View {
         VStack(spacing: 10) {
             BigSelectionCard(
-                title: flow.isLoadingHealthKit ? "Okunuyor..." : "Health'ten oku",
-                subtitle: "Doğum, cinsiyet, uyku, su",
+                title: flow.isLoadingHealthKit ? L("Okunuyor...") : L("Health'ten oku"),
+                subtitle: L("Doğum, cinsiyet, uyku"),
                 symbol: "heart.text.square",
                 isSelected: hasHealthData,
                 hapticEnabled: false
@@ -84,8 +84,8 @@ struct HealthSyncView: View {
             }
 
             BigSelectionCard(
-                title: "Elle gir",
-                subtitle: hasManualData ? "Yapıldı — düzenlemek için dokun" : "Birkaç soru",
+                title: L("Elle gir"),
+                subtitle: hasManualData ? L("Yapıldı — düzenlemek için dokun") : L("Birkaç soru"),
                 symbol: "square.and.pencil",
                 isSelected: hasManualData,
                 hapticEnabled: false
@@ -96,8 +96,8 @@ struct HealthSyncView: View {
             }
 
             BigSelectionCard(
-                title: "Şimdilik atla",
-                subtitle: "Sonra profilden eklersin",
+                title: L("Şimdilik atla"),
+                subtitle: L("Sonra profilden eklersin"),
                 symbol: "forward.end",
                 isSelected: false,
                 hapticEnabled: false
@@ -108,7 +108,6 @@ struct HealthSyncView: View {
                 flow.manualBirthDate = nil
                 flow.manualBiologicalSex = nil
                 flow.manualSleepHours = nil
-                flow.manualWaterGlasses = nil
                 flow.goNext()
             }
         }
@@ -133,7 +132,7 @@ struct HealthSyncView: View {
             }
 
             if !summaryRows.isEmpty == false {
-                Text("Henüz okunacak veri yok. Endişelenme; bunları sonradan profilden ekleyebilirsin.")
+                Text(L("Henüz okunacak veri yok. Endişelenme; bunları sonradan profilden ekleyebilirsin."))
                     .font(Theme.Typo.caption)
                     .foregroundStyle(Theme.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
@@ -168,10 +167,8 @@ struct HealthSyncView: View {
             rows.append(("Cilt tonu", fitzpatrickDescription(f)))
         }
         if let s = flow.manualSleepHours ?? snapshot?.avgSleepHoursLast30Days {
-            rows.append(("Uyku", String(format: "%.1f saat / gece", s)))
-        }
-        if let w = flow.manualWaterGlasses ?? snapshot?.avgWaterGlassesLast30Days {
-            rows.append(("Su", "\(w) bardak / gün"))
+            let hoursStr = s.formatted(.number.precision(.fractionLength(1)))
+            rows.append(("Uyku", String(format: L("sleep_hours_per_night"), hoursStr)))
         }
 
         return rows
@@ -194,9 +191,9 @@ struct HealthSyncView: View {
     private var manualEntrySheet: some View {
         NavigationStack {
             Form {
-                Section("Doğum tarihi") {
+                Section(L("Doğum tarihi")) {
                     DatePicker(
-                        "Doğum tarihi",
+                        L("Doğum tarihi"),
                         selection: $draftBirthDate,
                         in: minBirthDate...maxBirthDate,
                         displayedComponents: .date
@@ -206,7 +203,7 @@ struct HealthSyncView: View {
                     .frame(maxWidth: .infinity)
                 }
 
-                Section("Biyolojik cinsiyet") {
+                Section(L("Biyolojik cinsiyet")) {
                     sexChipGroup
                         .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
                 }
@@ -214,10 +211,13 @@ struct HealthSyncView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text("Ortalama uyku")
+                            Text(L("Ortalama uyku"))
                                 .foregroundStyle(Theme.ink)
                             Spacer()
-                            Text(String(format: "%.1f saat", draftSleep))
+                            Text({
+                                let hoursStr = draftSleep.formatted(.number.precision(.fractionLength(1)))
+                                return String(format: L("sleep_hours_long"), hoursStr)
+                            }())
                                 .font(Theme.Typo.body.weight(.medium))
                                 .foregroundStyle(Theme.ink)
                                 .monospacedDigit()
@@ -225,38 +225,12 @@ struct HealthSyncView: View {
                         Slider(value: $draftSleep, in: 4...12, step: 0.5)
                     }
                 } header: {
-                    Text("Uyku")
+                    Text(L("Uyku"))
                 }
 
-                Section {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Günlük su")
-                                .foregroundStyle(Theme.ink)
-                            Spacer()
-                            Text("\(draftWater) bardak")
-                                .font(Theme.Typo.body.weight(.medium))
-                                .foregroundStyle(Theme.ink)
-                                .monospacedDigit()
-                        }
-                        Slider(
-                            value: Binding(
-                                get: { Double(draftWater) },
-                                set: { draftWater = Int($0.rounded()) }
-                            ),
-                            in: 0...15,
-                            step: 1
-                        )
-                    }
-                } header: {
-                    Text("Su")
-                } footer: {
-                    Text("1 bardak ≈ 250 ml")
-                        .font(Theme.Typo.caption)
-                        .foregroundStyle(Theme.inkSoft)
-                }
+                // "Günlük su" section kaldırıldı — feature drop
 
-                Section("Sigara") {
+                Section(L("Sigara")) {
                     FlexibleChipRow(items: [
                         (value: "never", label: "Kullanmıyorum"),
                         (value: "occasionally", label: "Ara sıra"),
@@ -273,7 +247,7 @@ struct HealthSyncView: View {
                     .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
                 }
 
-                Section("Alkol") {
+                Section(L("Alkol")) {
                     FlexibleChipRow(items: [
                         (value: "never", label: "Hiç"),
                         (value: "rarely", label: "Nadiren"),
@@ -292,7 +266,7 @@ struct HealthSyncView: View {
                 }
 
                 if draftSex == "female" {
-                    Section("Hamilelik") {
+                    Section(L("Hamilelik")) {
                         FlexibleChipRow(items: [
                             (value: "no", label: "Hayır"),
                             (value: "yes", label: "Evet")
@@ -316,21 +290,20 @@ struct HealthSyncView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Elle gir")
+            .navigationTitle(L("Elle gir"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("İptal") {
+                    Button(L("İptal")) {
                         Haptics.light()
                         showManualSheet = false
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Kaydet") {
+                    Button(L("Kaydet")) {
                         flow.manualBirthDate = draftBirthDate
                         flow.manualBiologicalSex = draftSex
                         flow.manualSleepHours = draftSleep
-                        flow.manualWaterGlasses = draftWater
                         flow.manualSmoking = draftSmoking
                         flow.manualAlcohol = draftAlcohol
                         // pregnancy yalnızca female için anlamlı; diğer durumlarda nil yaz
@@ -386,13 +359,7 @@ struct HealthSyncView: View {
             draftSleep = 7.5
         }
 
-        if let w = flow.manualWaterGlasses {
-            draftWater = w
-        } else if let w = snapshot?.avgWaterGlassesLast30Days {
-            draftWater = max(0, min(15, w))
-        } else {
-            draftWater = 8
-        }
+        // draftWater kaldırıldı — feature drop
 
         draftSmoking = flow.manualSmoking
         draftAlcohol = flow.manualAlcohol
@@ -413,7 +380,7 @@ struct HealthSyncView: View {
 
     private func formatDate(_ d: Date) -> String {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "tr_TR")
+        f.locale = LanguageManager.shared.effectiveLocale
         f.dateStyle = .medium
         return f.string(from: d)
     }

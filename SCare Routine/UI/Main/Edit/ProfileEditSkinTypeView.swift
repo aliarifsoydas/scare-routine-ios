@@ -23,7 +23,7 @@ struct ProfileEditSkinTypeView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Cildini en iyi hangisi tanımlıyor?")
+                        Text(L("Cildini en iyi hangisi tanımlıyor?"))
                             .font(Theme.Typo.body)
                             .foregroundStyle(Theme.inkSoft)
                             .padding(.top, 4)
@@ -55,18 +55,18 @@ struct ProfileEditSkinTypeView: View {
                     .padding(.bottom, 24)
                 }
             }
-            .navigationTitle("Cilt tipi")
+            .navigationTitle(L("Cilt tipi"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("İptal") { dismiss() }
+                    Button(L("İptal")) { dismiss() }
                         .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isSaving {
                         ProgressView()
                     } else {
-                        Button("Kaydet", action: save)
+                        Button(L("Kaydet"), action: save)
                             .disabled(!canSave)
                             .fontWeight(.semibold)
                     }
@@ -97,7 +97,7 @@ struct ProfileEditSkinTypeView: View {
             HStack(spacing: 6) {
                 Image(systemName: ackUnsure ? "checkmark.circle.fill" : "questionmark.circle")
                     .font(.system(size: 13, weight: .regular))
-                Text("Emin değilim")
+                Text(L("Emin değilim"))
                     .font(Theme.Typo.caption.weight(.medium))
             }
             .foregroundStyle(ackUnsure ? Theme.ink : Theme.inkSoft)

@@ -45,7 +45,7 @@ struct RecentProductCard: View {
     private var displayTitle: String {
         if let n = item.name, !n.isEmpty { return n }
         if let nick = item.nickname, !nick.isEmpty { return nick }
-        return "Adsız ürün"
+        return L("Adsız ürün")
     }
 }
 
@@ -72,13 +72,13 @@ struct RecentAddCard: View {
                         .strokeBorder(Theme.divider, lineWidth: 0.5)
                 )
 
-                Text("Ürün ekle")
+                Text(L("Ürün ekle"))
                     .font(Theme.Typo.caption.weight(.medium))
                     .foregroundStyle(Theme.ink)
                     .frame(width: 96, alignment: .leading)
             }
         }
         .buttonStyle(PressedScaleButtonStyle())
-        .accessibilityLabel("Yeni ürün ekle")
+        .accessibilityLabel(L("Yeni ürün ekle"))
     }
 }

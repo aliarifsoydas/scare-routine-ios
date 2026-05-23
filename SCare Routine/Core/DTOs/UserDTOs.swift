@@ -76,7 +76,7 @@ struct LifestyleData: Codable, Hashable {
     let smoking: String?              // "never" | "occasionally" | "daily"
     let alcoholFrequency: String?     // "never" | "rarely" | "weekly" | "daily"
     let sleepHoursAvg: Double?
-    let waterGlassesPerDay: Int?
+    // waterGlassesPerDay removed — bilimsel kanıt zayıf, feature drop
 }
 
 /// JSON içindeki rastgele key/value'leri Swift'te taşımak için.

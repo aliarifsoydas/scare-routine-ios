@@ -26,7 +26,8 @@ struct HomeQuickActionTile: View {
                         .symbolRenderingMode(.hierarchical)
                 }
 
-                Text(label)
+                // String → LocalizedStringKey: TR catalog key olarak resolve edilir.
+                Text(LocalizedStringKey(label))
                     .font(Theme.Typo.caption.weight(.medium))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1)
@@ -45,6 +46,6 @@ struct HomeQuickActionTile: View {
             .opacity(isEnabled ? 1.0 : 0.7)
         }
         .buttonStyle(PressedScaleButtonStyle())
-        .accessibilityLabel(label)
+        .accessibilityLabel(Text(LocalizedStringKey(label)))
     }
 }

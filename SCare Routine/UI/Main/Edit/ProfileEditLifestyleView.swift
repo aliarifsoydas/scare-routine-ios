@@ -15,8 +15,7 @@ struct ProfileEditLifestyleView: View {
     // Uyku / su
     @State private var sleepHoursEnabled: Bool = false
     @State private var sleepHours: Double = 7.0
-    @State private var waterEnabled: Bool = false
-    @State private var waterGlasses: Double = 8.0
+    // water glasses kaldırıldı — bilimsel kanıt zayıf, feature drop
 
     @State private var isSaving = false
     @State private var errorMessage: String?
@@ -28,9 +27,9 @@ struct ProfileEditLifestyleView: View {
         var id: String { rawValue }
         var displayTR: String {
             switch self {
-            case .never: return "Hiç"
-            case .occasionally: return "Ara sıra"
-            case .daily: return "Günlük"
+            case .never: return L("smoking_never")
+            case .occasionally: return L("smoking_occasional")
+            case .daily: return L("smoking_daily")
             }
         }
     }
@@ -43,10 +42,10 @@ struct ProfileEditLifestyleView: View {
         var id: String { rawValue }
         var displayTR: String {
             switch self {
-            case .never: return "Hiç"
-            case .rarely: return "Nadiren"
-            case .weekly: return "Haftalık"
-            case .daily: return "Günlük"
+            case .never: return L("alcohol_never")
+            case .rarely: return L("alcohol_rarely")
+            case .weekly: return L("alcohol_weekly")
+            case .daily: return L("alcohol_daily")
             }
         }
     }
@@ -96,7 +95,7 @@ struct ProfileEditLifestyleView: View {
                             HStack {
                                 Image(systemName: "bed.double.fill")
                                     .foregroundStyle(Theme.inkSoft)
-                                Text("Uyku (saat)")
+                                Text(L("Uyku (saat)"))
                                     .font(Theme.Typo.headline)
                                     .foregroundStyle(Theme.ink)
                                 Spacer()
@@ -107,51 +106,16 @@ struct ProfileEditLifestyleView: View {
 
                             if sleepHoursEnabled {
                                 HStack {
-                                    Text("4 sa")
+                                    Text(L("4 sa"))
                                         .font(Theme.Typo.caption)
                                         .foregroundStyle(Theme.inkMute)
                                     Slider(value: $sleepHours, in: 4...12, step: 0.5)
                                         .tint(Theme.ink)
-                                    Text("12 sa")
+                                    Text(L("12 sa"))
                                         .font(Theme.Typo.caption)
                                         .foregroundStyle(Theme.inkMute)
                                 }
-                                Text("Ortalama: \(String(format: "%.1f", sleepHours)) saat")
-                                    .font(Theme.Typo.caption.weight(.medium))
-                                    .foregroundStyle(Theme.inkSoft)
-                            }
-                        }
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
-                                .fill(Theme.surface)
-                        )
-
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                Image(systemName: "drop.fill")
-                                    .foregroundStyle(Theme.inkSoft)
-                                Text("Su (bardak/gün)")
-                                    .font(Theme.Typo.headline)
-                                    .foregroundStyle(Theme.ink)
-                                Spacer()
-                                Toggle("", isOn: $waterEnabled.animation())
-                                    .labelsHidden()
-                                    .tint(Theme.ink)
-                            }
-
-                            if waterEnabled {
-                                HStack {
-                                    Text("0")
-                                        .font(Theme.Typo.caption)
-                                        .foregroundStyle(Theme.inkMute)
-                                    Slider(value: $waterGlasses, in: 0...15, step: 1)
-                                        .tint(Theme.ink)
-                                    Text("15")
-                                        .font(Theme.Typo.caption)
-                                        .foregroundStyle(Theme.inkMute)
-                                }
-                                Text("\(Int(waterGlasses)) bardak")
+                                Text(String(format: L("Ortalama: %@ saat"), String(format: "%.1f", sleepHours)))
                                     .font(Theme.Typo.caption.weight(.medium))
                                     .foregroundStyle(Theme.inkSoft)
                             }
@@ -172,18 +136,18 @@ struct ProfileEditLifestyleView: View {
                     .padding(.vertical, 16)
                 }
             }
-            .navigationTitle("Yaşam tarzı")
+            .navigationTitle(L("Yaşam tarzı"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("İptal") { dismiss() }
+                    Button(L("İptal")) { dismiss() }
                         .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isSaving {
                         ProgressView()
                     } else {
-                        Button("Kaydet", action: save)
+                        Button(L("Kaydet"), action: save)
                             .disabled(!canSave)
                             .fontWeight(.semibold)
                     }
@@ -196,14 +160,14 @@ struct ProfileEditLifestyleView: View {
     }
 
     private var canSave: Bool {
-        smoking != nil || alcohol != nil || sleepHoursEnabled || waterEnabled
+        smoking != nil || alcohol != nil || sleepHoursEnabled
     }
 
     private func sectionHeader(_ title: String, systemImage: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
                 .foregroundStyle(Theme.inkSoft)
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(Theme.Typo.headline)
                 .foregroundStyle(Theme.ink)
         }
@@ -221,10 +185,7 @@ struct ProfileEditLifestyleView: View {
             sleepHoursEnabled = true
             sleepHours = min(max(sh, 4.0), 12.0)
         }
-        if let w = life.waterGlassesPerDay {
-            waterEnabled = true
-            waterGlasses = Double(min(max(w, 0), 15))
-        }
+        // water glasses kaldırıldı — feature drop
     }
 
     private func save() {
@@ -236,8 +197,7 @@ struct ProfileEditLifestyleView: View {
         let lifestylePayload = LifestylePayload(
             smoking: smoking?.rawValue,
             alcoholFrequency: alcohol?.rawValue,
-            sleepHoursAvg: sleepHoursEnabled ? sleepHours : nil,
-            waterGlassesPerDay: waterEnabled ? Int(waterGlasses) : nil
+            sleepHoursAvg: sleepHoursEnabled ? sleepHours : nil
         )
 
         var payload = ProfileUpdateRequest()

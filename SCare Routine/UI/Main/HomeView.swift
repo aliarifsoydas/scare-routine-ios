@@ -25,9 +25,19 @@ struct HomeView: View {
     @State private var recentProducts: [UserProductResponse] = []
     @State private var isLoadingRecents: Bool = true
     @State private var showAddProductSheet: Bool = false
+    /// Quick Scan akışı — `AddProductFlowView(mode: .quickScan)` sheet'ini açar.
+    /// Bu mod ürünü otomatik arşive eklemez; sadece fit-score önizleme paneli gösterir.
+    @State private var showQuickScanSheet: Bool = false
     @State private var soonAlert: SoonAlert?
     /// RecentProductCard tap'inden açılan detay sheet'inin payload'u.
     @State private var selectedDetailItem: UserProductResponse?
+
+    // Rutin kartları için state
+    @State private var routines: [RoutineResponse] = []
+    @State private var showCreateRoutineSheet: Bool = false
+    @State private var navPath: NavigationPath = NavigationPath()
+    @State private var aiSheetTarget: AIRecommendPreviewSheet.TimeSlot?
+    @State private var creationSlotIntent: AIRecommendPreviewSheet.TimeSlot?
 
     /// "Yakında" alert payload — başlık + mesaj.
     private struct SoonAlert: Identifiable {
@@ -36,15 +46,24 @@ struct HomeView: View {
         let message: String
     }
 
+    /// NavigationStack için route tipi. RoutineDetail için routineId taşır.
+    /// `autoFocusAddStep` yeni oluşturulan rutinler için detail açıldığında
+    /// adım ekleme sheet'ini otomatik açar.
+    enum HomeRoute: Hashable {
+        case routineList
+        case routineDetail(id: String, autoFocusAddStep: Bool = false)
+        case weeklyCalendar
+    }
+
     // MARK: - Hesaplanan değerler
 
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: .now)
         switch hour {
-        case 5..<12:  return "Günaydın"
-        case 12..<18: return "İyi günler"
-        case 18..<22: return "İyi akşamlar"
-        default:      return "İyi geceler"
+        case 5..<12:  return L("Günaydın")
+        case 12..<18: return L("İyi günler")
+        case 18..<22: return L("İyi akşamlar")
+        default:      return L("İyi geceler")
         }
     }
 
@@ -73,10 +92,40 @@ struct HomeView: View {
 
     private var profile: ProfileData? { appState.currentProfile }
 
+    /// HeroCard ile aynı kriter: skin_type + birth_date varsa profil hazır sayılır.
+    private var isProfileComplete: Bool {
+        guard let p = profile else { return false }
+        return p.skinType != nil && p.birthDate != nil
+    }
+
+    private var morningRoutine: RoutineResponse? {
+        routines.first { isMorning($0) }
+    }
+
+    private var eveningRoutine: RoutineResponse? {
+        routines.first { isEvening($0) }
+    }
+
+    private func isMorning(_ r: RoutineResponse) -> Bool {
+        if let t = r.schedule?.time, let h = Int(t.split(separator: ":").first.map(String.init) ?? "") {
+            return h < 14
+        }
+        let n = r.name.lowercased()
+        return n.contains("sabah") || n.contains("morning")
+    }
+
+    private func isEvening(_ r: RoutineResponse) -> Bool {
+        if let t = r.schedule?.time, let h = Int(t.split(separator: ":").first.map(String.init) ?? "") {
+            return h >= 14
+        }
+        let n = r.name.lowercased()
+        return n.contains("akşam") || n.contains("evening") || n.contains("gece")
+    }
+
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navPath) {
             ZStack {
                 Theme.canvas.ignoresSafeArea()
 
@@ -86,46 +135,65 @@ struct HomeView: View {
                             .padding(.horizontal, 20)
                             .padding(.top, 8)
 
-                        HomeProfileHeroCard(profile: profile) {
-                            // MainTabView programmatic navigation — Profil tab'ına geçer.
-                            // onNavigate yoksa (preview, eski caller) önceki soft fallback.
-                            if let onNavigate {
-                                onNavigate(3)
-                            } else {
-                                soonAlert = SoonAlert(
-                                    title: "Profilini görüntüle",
-                                    message: "Alt menüden \"Profil\" sekmesine geçerek bilgilerini düzenleyebilirsin."
-                                )
+                        // Profil hazırsa hero card'ı gizle — kullanıcı tekrar görmek istemez.
+                        // Sadece eksikse "Profilini tamamla" CTA olarak gösterilir.
+                        if !isProfileComplete {
+                            HomeProfileHeroCard(profile: profile) {
+                                // MainTabView programmatic navigation — Profil tab'ına geçer.
+                                // onNavigate yoksa (preview, eski caller) önceki soft fallback.
+                                if let onNavigate {
+                                    onNavigate(3)
+                                } else {
+                                    soonAlert = SoonAlert(
+                                        title: L("Profilini görüntüle"),
+                                        message: String(localized: "Alt menüden \"Profil\" sekmesine geçerek bilgilerini düzenleyebilirsin.")
+                                    )
+                                }
                             }
+                            .padding(.horizontal, 20)
                         }
-                        .padding(.horizontal, 20)
 
                         // MARK: Bugün için (rutin kartları)
                         VStack(alignment: .leading, spacing: 12) {
-                            sectionHeader("Bugün için")
+                            HStack(spacing: 12) {
+                                Text(L("Bugün için"))
+                                    .font(Theme.Typo.headline)
+                                    .foregroundStyle(Theme.ink)
+                                Spacer()
+                                if !routines.isEmpty {
+                                    NavigationLink(value: HomeRoute.weeklyCalendar) {
+                                        HStack(spacing: 3) {
+                                            Image(systemName: "calendar")
+                                                .font(.system(size: 11, weight: .semibold))
+                                            Text(L("Haftalık"))
+                                                .font(Theme.Typo.caption.weight(.semibold))
+                                        }
+                                        .foregroundStyle(Theme.ink)
+                                    }
+                                    NavigationLink(value: HomeRoute.routineList) {
+                                        HStack(spacing: 2) {
+                                            Text(L("Tümü"))
+                                                .font(Theme.Typo.caption.weight(.semibold))
+                                            Image(systemName: "chevron.right")
+                                                .font(.system(size: 10, weight: .semibold))
+                                        }
+                                        .foregroundStyle(Theme.ink)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+
                             VStack(spacing: 10) {
-                                HomeRoutineCard(
+                                routineSlotCard(
                                     icon: "sun.max.fill",
-                                    title: "Sabah rutini",
-                                    subtitle: "Henüz oluşturmadın",
-                                    actionLabel: "Oluştur"
-                                ) {
-                                    soonAlert = SoonAlert(
-                                        title: "Yakında",
-                                        message: "Sabah rutini özelliği çok yakında geliyor. Cilt tipine göre özelleştirilmiş adımlar burada olacak."
-                                    )
-                                }
-                                HomeRoutineCard(
+                                    title: L("Sabah rutini"),
+                                    routine: morningRoutine
+                                )
+                                routineSlotCard(
                                     icon: "moon.stars.fill",
-                                    title: "Akşam rutini",
-                                    subtitle: "Henüz oluşturmadın",
-                                    actionLabel: "Oluştur"
-                                ) {
-                                    soonAlert = SoonAlert(
-                                        title: "Yakında",
-                                        message: "Akşam rutini özelliği çok yakında geliyor. Cilt tipine göre özelleştirilmiş adımlar burada olacak."
-                                    )
-                                }
+                                    title: L("Akşam rutini"),
+                                    routine: eveningRoutine
+                                )
                             }
                             .padding(.horizontal, 20)
                         }
@@ -149,12 +217,86 @@ struct HomeView: View {
                 .scrollIndicators(.hidden)
                 .refreshable {
                     await loadRecents()
+                    await loadRoutines()
                 }
             }
             .navigationBarHidden(true)
+            .telemetryScreen("Home")
+            .navigationDestination(for: HomeRoute.self) { route in
+                switch route {
+                case .routineList:
+                    RoutineListView()
+                case .routineDetail(let id, let autoFocus):
+                    if let r = routines.first(where: { $0.id == id }) {
+                        RoutineDetailView(
+                            routineId: id,
+                            initialRoutine: r,
+                            autoFocusAddStep: autoFocus,
+                            onDeleted: { deletedId in
+                                routines.removeAll { $0.id == deletedId }
+                            }
+                        )
+                    }
+                case .weeklyCalendar:
+                    WeeklyCalendarView()
+                }
+            }
+            .sheet(isPresented: $showCreateRoutineSheet) {
+                CreateRoutineSheet(onCreated: { newRoutine in
+                    routines.append(newRoutine)
+                    routines.sort { $0.orderIndex < $1.orderIndex }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        navPath.append(HomeRoute.routineDetail(id: newRoutine.id, autoFocusAddStep: true))
+                    }
+                })
+            }
+            .sheet(item: $aiSheetTarget) { slot in
+                AIRecommendPreviewSheet(
+                    targetTime: slot,
+                    onAccepted: { newRoutine in
+                        routines.append(newRoutine)
+                        routines.sort { $0.orderIndex < $1.orderIndex }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            navPath.append(HomeRoute.routineDetail(id: newRoutine.id))
+                        }
+                    }
+                )
+            }
+            .confirmationDialog(
+                L("Rutini nasıl oluşturmak istersin?"),
+                isPresented: Binding(
+                    get: { creationSlotIntent != nil },
+                    set: { if !$0 { creationSlotIntent = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button(L("✨ AI ile öner")) {
+                    let slot = creationSlotIntent
+                    creationSlotIntent = nil
+                    aiSheetTarget = slot
+                }
+                Button(L("Manuel oluştur")) {
+                    creationSlotIntent = nil
+                    showCreateRoutineSheet = true
+                }
+                Button(L("Vazgeç"), role: .cancel) { creationSlotIntent = nil }
+            } message: {
+                Text(L("AI, arşivindeki ürünleri sıralayıp neden olduğunu açıklar. Manuelde sen kuruyorsun."))
+            }
             .sheet(isPresented: $showAddProductSheet) {
                 AddProductFlowView { newItem in
                     // Optimistic insert — gelen item'ı en başa al ve 5'ten fazla varsa kırp.
+                    recentProducts.insert(newItem, at: 0)
+                    if recentProducts.count > 5 {
+                        recentProducts = Array(recentProducts.prefix(5))
+                    }
+                }
+            }
+            .sheet(isPresented: $showQuickScanSheet) {
+                // Quick Scan modu: önizleme paneli arşive otomatik eklemez.
+                // Kullanıcı panel içinden "Arşive ekle" derse onAdded callback'i tetiklenir
+                // ve recent listesine eklenir; aksi halde recents değişmeden kalır.
+                AddProductFlowView(mode: .quickScan) { newItem in
                     recentProducts.insert(newItem, at: 0)
                     if recentProducts.count > 5 {
                         recentProducts = Array(recentProducts.prefix(5))
@@ -182,8 +324,52 @@ struct HomeView: View {
                     dismissButton: .default(Text("Tamam")) { Haptics.light() }
                 )
             }
-            .task { await loadRecents() }
+            .task {
+                await loadRecents()
+                await loadRoutines()
+            }
         }
+    }
+
+    // MARK: - Rutin kart
+
+    @ViewBuilder
+    private func routineSlotCard(icon: String, title: String, routine: RoutineResponse?) -> some View {
+        if let routine {
+            NavigationLink(value: HomeRoute.routineDetail(id: routine.id)) {
+                HomeRoutineCard(
+                    icon: icon,
+                    title: routine.name,
+                    subtitle: routineSubtitle(for: routine),
+                    actionLabel: L("Aç")
+                )
+            }
+            .buttonStyle(PressedScaleButtonStyle())
+        } else {
+            Button {
+                Haptics.light()
+                creationSlotIntent = slotFor(title: title)
+            } label: {
+                HomeRoutineCard(
+                    icon: icon,
+                    title: title,
+                    subtitle: L("AI senin ürünlerinle önersin"),
+                    actionLabel: L("✨ Öner")
+                )
+            }
+            .buttonStyle(PressedScaleButtonStyle())
+        }
+    }
+
+    private func slotFor(title: String) -> AIRecommendPreviewSheet.TimeSlot {
+        title.lowercased().contains("sabah") ? .morning : .evening
+    }
+
+    private func routineSubtitle(for r: RoutineResponse) -> String {
+        var parts: [String] = []
+        if let t = r.schedule?.time { parts.append(t) }
+        if r.reminder { parts.append(L("Hatırlatma")) }
+        return parts.isEmpty ? L("Detayları aç") : parts.joined(separator: " · ")
     }
 
     // MARK: - Bileşenler
@@ -207,7 +393,8 @@ struct HomeView: View {
     }
 
     private func sectionHeader(_ title: String) -> some View {
-        Text(title)
+        // String → LocalizedStringKey: TR key catalog'da arandığında EN'e çevirilir.
+        Text(LocalizedStringKey(title))
             .font(Theme.Typo.headline)
             .foregroundStyle(Theme.ink)
             .padding(.horizontal, 20)
@@ -225,22 +412,19 @@ struct HomeView: View {
             }
             HomeQuickActionTile(icon: "list.bullet.clipboard", label: "Cilt logu", isEnabled: false) {
                 soonAlert = SoonAlert(
-                    title: "Yakında",
-                    message: "Günlük cilt logu özelliği çok yakında — \"Cilt\" sekmesinden takibe başlayabilirsin."
+                    title: L("Yakında"),
+                    message: String(localized: "Günlük cilt logu özelliği çok yakında — \"Cilt\" sekmesinden takibe başlayabilirsin.")
                 )
             }
-            HomeQuickActionTile(icon: "sparkles", label: "AI öneri", isEnabled: false) {
-                soonAlert = SoonAlert(
-                    title: "Yakında",
-                    message: "AI cilt önerileri için profil verilerini analiz eden öneri motorumuz hazırlanıyor."
-                )
+            HomeQuickActionTile(icon: "barcode.viewfinder", label: "Hızlı tara", isEnabled: true) {
+                showQuickScanSheet = true
             }
         }
     }
 
     private var recentHeader: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text("Son arşive eklenenler")
+            Text(L("Son arşive eklenenler"))
                 .font(Theme.Typo.headline)
                 .foregroundStyle(Theme.ink)
             Spacer()
@@ -252,13 +436,13 @@ struct HomeView: View {
                         onNavigate(1)
                     } else {
                         soonAlert = SoonAlert(
-                            title: "Tüm ürünler",
-                            message: "Alt menüden \"Arşiv\" sekmesine geçerek tüm ürünlerini görebilirsin."
+                            title: L("Tüm ürünler"),
+                            message: String(localized: "Alt menüden \"Arşiv\" sekmesine geçerek tüm ürünlerini görebilirsin.")
                         )
                     }
                 } label: {
                     HStack(spacing: 2) {
-                        Text("Tümü")
+                        Text(L("Tümü"))
                             .font(Theme.Typo.caption.weight(.semibold))
                         Image(systemName: "chevron.right")
                             .font(.system(size: 10, weight: .semibold))
@@ -276,7 +460,7 @@ struct HomeView: View {
         if isLoadingRecents {
             HStack {
                 ProgressView().tint(Theme.ink)
-                Text("Yükleniyor...")
+                Text(L("Yükleniyor..."))
                     .font(Theme.Typo.caption)
                     .foregroundStyle(Theme.inkSoft)
             }
@@ -318,10 +502,10 @@ struct HomeView: View {
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Arşivin boş")
+                Text(L("Arşivin boş"))
                     .font(Theme.Typo.headline)
                     .foregroundStyle(Theme.ink)
-                Text("İlk ürününü ekleyerek başla")
+                Text(L("İlk ürününü ekleyerek başla"))
                     .font(Theme.Typo.caption)
                     .foregroundStyle(Theme.inkSoft)
             }
@@ -332,7 +516,7 @@ struct HomeView: View {
                 Haptics.light()
                 showAddProductSheet = true
             } label: {
-                Text("Ekle")
+                Text(L("Ekle"))
                     .font(Theme.Typo.caption.weight(.semibold))
                     .foregroundStyle(Theme.onAccent)
                     .padding(.horizontal, 14)
@@ -379,6 +563,17 @@ struct HomeView: View {
             // Sessizce başarısız — anasayfada error gösterme; kullanıcı yine de
             // diğer bölümleri kullanabilsin. Arşiv sekmesi gerçek error gösterir.
             recentProducts = []
+        }
+    }
+
+    @MainActor
+    private func loadRoutines() async {
+        do {
+            routines = try await RoutineService.shared.listRoutines()
+                .sorted { $0.orderIndex < $1.orderIndex }
+        } catch {
+            // Sessiz fail — home boş kartlarla render eder.
+            routines = []
         }
     }
 }

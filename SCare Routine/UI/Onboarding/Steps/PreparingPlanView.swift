@@ -30,13 +30,13 @@ struct PreparingPlanView: View {
 
                 // Yüzde + başlık
                 VStack(spacing: 14) {
-                    Text("\(Int(progress * 100))%")
+                    Text(progress, format: .percent.precision(.fractionLength(0)))
                         .font(.system(size: 56, weight: .bold, design: .default))
                         .foregroundStyle(Theme.ink)
                         .monospacedDigit()
                         .contentTransition(.numericText(value: progress))
 
-                    Text("Senin için hazırlıyorum…")
+                    Text(L("Senin için hazırlıyorum…"))
                         .font(Theme.Typo.title)
                         .foregroundStyle(Theme.ink)
                         .multilineTextAlignment(.center)
@@ -136,14 +136,17 @@ struct PreparingPlanView: View {
             try? await Task.sleep(nanoseconds: stepDuration)
         }
 
-        // Son: %100
+        // Son: %100 — animation bitince user'ın "bitti" hissi yaşaması için
+        // ekranın görünür kalmasını sağla (1.2s).
         currentStep = steps.count
-        withAnimation(.easeOut(duration: 0.4)) {
+        withAnimation(.easeOut(duration: 0.5)) {
             progress = 1.0
         }
+        // Anim 0.5s + post-wait 1.2s = %100 ekranda toplam ~1.2s görünür
         try? await Task.sleep(nanoseconds: 500_000_000)
-
         Haptics.success()
+        try? await Task.sleep(nanoseconds: 1_200_000_000)
+
         onComplete()
     }
 }

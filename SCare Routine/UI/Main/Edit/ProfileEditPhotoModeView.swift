@@ -20,28 +20,28 @@ struct ProfileEditPhotoModeView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Çektiğin fotoğrafları nasıl saklayalım?")
+                        Text(L("Çektiğin fotoğrafları nasıl saklayalım?"))
                             .font(Theme.Typo.body)
                             .foregroundStyle(Theme.inkSoft)
                             .padding(.top, 4)
 
                         VStack(spacing: 10) {
                             BigSelectionCard(
-                                title: "Fotoğrafları sakla",
-                                subtitle: "Before/after karşılaştırması yapabilirsin. İstediğin zaman silebilirsin.",
+                                title: L("Fotoğrafları sakla"),
+                                subtitle: L("Before/after karşılaştırması yapabilirsin. İstediğin zaman silebilirsin."),
                                 symbol: "photo.on.rectangle.angled",
                                 isSelected: mode == .photoKept
                             ) { mode = .photoKept }
 
                             BigSelectionCard(
-                                title: "Sadece veri sakla",
-                                subtitle: "Daha gizlilik dostu. Fotoğraf AI analizinden sonra silinir; yorumlar kalır.",
+                                title: L("Sadece veri sakla"),
+                                subtitle: L("Daha gizlilik dostu. Fotoğraf AI analizinden sonra silinir; yorumlar kalır."),
                                 symbol: "lock.fill",
                                 isSelected: mode == .metricsOnly
                             ) { mode = .metricsOnly }
                         }
 
-                        Text("Geçmiş fotoğraflarına dokunmaz; yalnızca yeni çekimleri etkiler.")
+                        Text(L("Geçmiş fotoğraflarına dokunmaz; yalnızca yeni çekimleri etkiler."))
                             .font(Theme.Typo.caption)
                             .foregroundStyle(Theme.inkMute)
                             .padding(.top, 4)
@@ -56,18 +56,18 @@ struct ProfileEditPhotoModeView: View {
                     .padding(.bottom, 24)
                 }
             }
-            .navigationTitle("Fotoğraf modu")
+            .navigationTitle(L("Fotoğraf modu"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("İptal") { dismiss() }
+                    Button(L("İptal")) { dismiss() }
                         .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isSaving {
                         ProgressView()
                     } else {
-                        Button("Kaydet", action: save)
+                        Button(L("Kaydet"), action: save)
                             .fontWeight(.semibold)
                     }
                 }

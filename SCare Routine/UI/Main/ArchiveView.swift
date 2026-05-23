@@ -42,7 +42,7 @@ struct ArchiveView: View {
                     productGrid
                 }
             }
-            .navigationTitle("Arşiv")
+            .navigationTitle(L("Arşiv"))
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -54,10 +54,10 @@ struct ArchiveView: View {
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(Theme.ink)
                     }
-                    .accessibilityLabel("Ürün ekle")
+                    .accessibilityLabel(L("Ürün ekle"))
                 }
             }
-            .searchable(text: $searchQuery, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Ürün ara")
+            .searchable(text: $searchQuery, placement: .navigationBarDrawer(displayMode: .automatic), prompt: L("Ürün ara"))
             .sheet(isPresented: $showAddSheet) {
                 AddProductFlowView { newItem in
                     // Optimistic ekleme — başa al
@@ -87,7 +87,7 @@ struct ArchiveView: View {
     private var loadingState: some View {
         VStack(spacing: 12) {
             ProgressView().tint(Theme.ink)
-            Text("Arşiv yükleniyor...")
+            Text(L("Arşiv yükleniyor..."))
                 .font(Theme.Typo.caption)
                 .foregroundStyle(Theme.inkSoft)
         }
@@ -107,7 +107,7 @@ struct ArchiveView: View {
                 Haptics.light()
                 Task { await load() }
             } label: {
-                Text("Tekrar dene")
+                Text(L("Tekrar dene"))
                     .font(Theme.Typo.button)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
@@ -130,10 +130,10 @@ struct ArchiveView: View {
                 .foregroundStyle(Theme.inkMute)
 
             VStack(spacing: 8) {
-                Text("Arşivin boş")
+                Text(L("Arşivin boş"))
                     .font(Theme.Typo.headline)
                     .foregroundStyle(Theme.ink)
-                Text("Kullandığın kozmetikleri fotoğraflayarak\narşivine ekleyebilirsin.")
+                Text(L("Kullandığın kozmetikleri fotoğraflayarak\narşivine ekleyebilirsin."))
                     .font(Theme.Typo.body)
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -145,7 +145,7 @@ struct ArchiveView: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "camera.viewfinder")
-                    Text("İlk ürünü ekle")
+                    Text(L("İlk ürünü ekle"))
                         .font(Theme.Typo.button)
                 }
                 .padding(.horizontal, 24)
@@ -177,7 +177,7 @@ struct ArchiveView: View {
                         ProductCard(item: p)
                     }
                     .buttonStyle(PressedScaleButtonStyle())
-                    .accessibilityLabel(p.name ?? p.nickname ?? "Ürün")
+                    .accessibilityLabel(p.name ?? p.nickname ?? L("Ürün"))
                 }
             }
             .padding(.horizontal, 16)
@@ -185,7 +185,7 @@ struct ArchiveView: View {
             .padding(.bottom, 24)
 
             if !filtered.isEmpty {
-                Text("\(filtered.count) ürün")
+                Text(String(format: L("%d ürün"), filtered.count))
                     .font(Theme.Typo.caption)
                     .foregroundStyle(Theme.inkMute)
                     .padding(.bottom, 16)
@@ -198,7 +198,7 @@ struct ArchiveView: View {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 32, weight: .light))
                         .foregroundStyle(Theme.inkMute)
-                    Text("Eşleşen ürün yok")
+                    Text(L("Eşleşen ürün yok"))
                         .font(Theme.Typo.body)
                         .foregroundStyle(Theme.inkSoft)
                 }

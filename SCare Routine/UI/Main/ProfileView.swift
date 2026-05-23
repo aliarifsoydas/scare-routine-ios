@@ -1,4 +1,6 @@
 import SwiftUI
+import UserNotifications
+import UIKit
 
 /// Profil tab'ı — hesap bilgileri, profil tamamlama satırları, tercihler, hesap aksiyonları.
 ///
@@ -12,6 +14,23 @@ struct ProfileView: View {
     @State private var showDeleteConfirm = false
     @State private var isProcessing = false
     @State private var editSheet: EditSheet?
+
+    /// Notification permission durumu — onAppear + permission iste sonrası refresh.
+    @State private var notifAuthStatus: UNAuthorizationStatus = .notDetermined
+    /// HealthKit bağlantı durumu — Apple "denied" rapor etmez, sadece "dialog soruldu mu" tahmini.
+    @State private var healthKitStatus: HealthKitService.ConnectionStatus = .unknown
+    /// In-app dil picker sheet
+    @State private var showLanguagePicker: Bool = false
+    @Environment(LanguageManager.self) private var languageManager
+
+    /// Picker satırında gösterilecek aktif dil
+    private var currentLanguageDisplayName: String {
+        switch languageManager.current {
+        case .system: return "Sistem"
+        case .tr: return "Türkçe"
+        case .en: return "English"
+        }
+    }
 
     /// Açılacak edit sheet'i (Identifiable ile native .sheet(item:) için)
     enum EditSheet: String, Identifiable {
@@ -35,7 +54,7 @@ struct ProfileView: View {
         if let fallback = user.displayName?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !fallback.isEmpty { return fallback }
-        return "Adını ekle"
+        return L("Adını ekle")
     }
 
     private var email: String? {
@@ -57,83 +76,79 @@ struct ProfileView: View {
                             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                     }
 
-                    Section("Profil bilgileri") {
+                    Section(L("Profil bilgileri")) {
                         completeRow(
                             icon: "person.text.rectangle",
-                            title: "Ad",
+                            title: L("Ad"),
                             value: appState.currentUser?.displayName?.isEmpty == false
                                 ? appState.currentUser?.displayName
                                 : nil,
-                            placeholder: "Eklemek için dokun"
+                            placeholder: L("Eklemek için dokun")
                         ) { editSheet = .displayName }
 
                         completeRow(
                             icon: "calendar",
-                            title: "Doğum tarihi",
+                            title: L("Doğum tarihi"),
                             value: birthDateDisplay,
-                            placeholder: "Eklemek için dokun"
+                            placeholder: L("Eklemek için dokun")
                         ) { editSheet = .birthDate }
 
                         completeRow(
                             icon: "figure.stand",
-                            title: "Cinsiyet",
+                            title: L("Cinsiyet"),
                             value: genderDisplay,
-                            placeholder: "Eklemek için dokun"
+                            placeholder: L("Eklemek için dokun")
                         ) { editSheet = .gender }
                     }
 
-                    Section("Cilt profili") {
+                    Section(L("Cilt profili")) {
                         completeRow(
                             icon: "drop.fill",
-                            title: "Cilt tipi",
+                            title: L("Cilt tipi"),
                             value: skinTypeDisplay,
-                            placeholder: "Eklemek için dokun"
+                            placeholder: L("Eklemek için dokun")
                         ) { editSheet = .skinType }
 
                         completeRow(
                             icon: "sun.max.fill",
-                            title: "Cilt tonu",
+                            title: L("Cilt tonu"),
                             value: fitzpatrickDisplay,
-                            placeholder: "Eklemek için dokun"
+                            placeholder: L("Eklemek için dokun")
                         ) { editSheet = .fitzpatrick }
                     }
 
-                    Section("Yaşam tarzı") {
+                    Section(L("Yaşam tarzı")) {
                         completeRow(
                             icon: "heart.text.square",
-                            title: "Yaşam tarzı",
+                            title: L("Yaşam tarzı"),
                             value: lifestyleSummary,
-                            placeholder: "Sigara, alkol, uyku, su"
+                            placeholder: L("Sigara, alkol, uyku, su")
                         ) { editSheet = .lifestyle }
                     }
 
-                    Section("Tercihler") {
+                    Section(L("Tercihler")) {
                         completeRow(
                             icon: "camera.viewfinder",
-                            title: "Fotoğraf modu",
+                            title: L("Fotoğraf modu"),
                             value: photoModeDisplay,
-                            placeholder: "Sadece veri saklanıyor"
+                            placeholder: L("Sadece veri saklanıyor")
                         ) { editSheet = .photoMode }
 
-                        // Dil — basit toggle (TR/EN)
+                        // Dil — in-app picker.
+                        // Modern apps (Duolingo, WhatsApp, Headspace) bu pattern'i kullanır:
+                        // anlık `.environment(\.locale)` switch ile SwiftUI tree refresh olur.
+                        // Settings'e gönderme antipattern, kullanıcı haklı.
                         Button {
                             Haptics.selection()
-                            let newLocale = appState.locale == "tr" ? "en" : "tr"
-                            appState.setLocale(newLocale)
-                            Task {
-                                var payload = ProfileUpdateRequest()
-                                payload.locale = newLocale
-                                try? await UserService.shared.updateProfile(payload)
-                                await appState.refreshMe()
-                            }
+                            showLanguagePicker = true
                         } label: {
                             HStack {
-                                Label("Dil", systemImage: "globe")
+                                Label(L("Dil"), systemImage: "globe")
                                 Spacer()
-                                Text(appState.locale.uppercased())
+                                Text(currentLanguageDisplayName)
                                     .font(.subheadline.weight(.medium))
                                     .foregroundStyle(Theme.inkSoft)
-                                Image(systemName: "arrow.left.arrow.right")
+                                Image(systemName: "chevron.right")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(Theme.inkMute)
                             }
@@ -143,25 +158,40 @@ struct ProfileView: View {
 
                         completeRow(
                             icon: "location",
-                            title: "Ülke",
+                            title: L("Ülke"),
                             value: profile?.country?.uppercased(),
-                            placeholder: "Eklemek için dokun"
+                            placeholder: L("Eklemek için dokun")
                         ) { editSheet = .country }
 
-                        // Bildirimler — "Yakında" rozeti, henüz feature yok
-                        HStack {
-                            Label("Bildirimler", systemImage: "bell.fill")
-                            Spacer()
-                            Text("Yakında")
-                                .font(.caption.weight(.semibold))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(Capsule().fill(Theme.surfaceLow))
-                                .foregroundStyle(Theme.inkSoft)
+                        // Bildirimler — permission durumuna göre interaktif
+                        Button {
+                            handleNotificationTap()
+                        } label: {
+                            HStack {
+                                Label(L("Bildirimler"), systemImage: "bell.fill")
+                                    .foregroundStyle(Theme.ink)
+                                Spacer()
+                                notifStatusBadge
+                            }
                         }
+                        .buttonStyle(.plain)
+
+                        // Apple Health bağlantısı
+                        Button {
+                            handleHealthKitTap()
+                        } label: {
+                            HStack {
+                                Label(L("Apple Health"), systemImage: "heart.fill")
+                                    .foregroundStyle(Theme.ink)
+                                Spacer()
+                                healthKitStatusBadge
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(healthKitStatus == .unsupported)
                     }
 
-                    Section("Hesap") {
+                    Section(L("Hesap")) {
                         Button {
                             Task {
                                 isProcessing = true
@@ -169,23 +199,23 @@ struct ProfileView: View {
                                 isProcessing = false
                             }
                         } label: {
-                            Label("Çıkış yap", systemImage: "rectangle.portrait.and.arrow.right")
+                            Label(L("Çıkış yap"), systemImage: "rectangle.portrait.and.arrow.right")
                         }
                         .disabled(isProcessing)
 
                         Button(role: .destructive) {
                             showDeleteConfirm = true
                         } label: {
-                            Label("Hesabı sil", systemImage: "trash")
+                            Label(L("Hesabı sil"), systemImage: "trash")
                         }
                     }
 
                     Section {
                         VStack(alignment: .center, spacing: 4) {
-                            Text("SCare Routine")
+                            Text(L("SCare Routine"))
                                 .font(Theme.Typo.caption.weight(.semibold))
                                 .foregroundStyle(Theme.inkMute)
-                            Text("v0.1.0")
+                            Text(L("v0.1.0"))
                                 .font(Theme.Typo.caption)
                                 .foregroundStyle(Theme.inkMute)
                         }
@@ -195,16 +225,19 @@ struct ProfileView: View {
                 }
                 .scrollContentBackground(.hidden)
             }
-            .navigationTitle("Profil")
+            .navigationTitle(L("Profil"))
             .navigationBarTitleDisplayMode(.large)
             .task {
                 // Tab açıldığında en güncel state'i çek — kullanıcı başka cihazda
                 // güncelleme yapmış olabilir
                 await appState.refreshMe()
+                // Permission durumlarını da refresh et
+                notifAuthStatus = await NotificationService.shared.authorizationStatus()
+                healthKitStatus = await HealthKitService.shared.connectionStatus()
             }
-            .alert("Hesabını silmek istiyor musun?", isPresented: $showDeleteConfirm) {
-                Button("İptal", role: .cancel) {}
-                Button("Hesabımı sil", role: .destructive) {
+            .alert(L("Hesabını silmek istiyor musun?"), isPresented: $showDeleteConfirm) {
+                Button(L("İptal"), role: .cancel) {}
+                Button(L("Hesabımı sil"), role: .destructive) {
                     Task {
                         isProcessing = true
                         try? await AuthService.shared.deleteAccount()
@@ -213,7 +246,12 @@ struct ProfileView: View {
                     }
                 }
             } message: {
-                Text("Bu işlem geri alınamaz. Tüm verilerin (profil, ürünler, rutinler, fotoğraflar) silinecek.")
+                Text(L("Bu işlem geri alınamaz. Tüm verilerin (profil, ürünler, rutinler, fotoğraflar) silinecek."))
+            }
+            .sheet(isPresented: $showLanguagePicker) {
+                LanguagePickerView()
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
             }
             .sheet(item: $editSheet) { sheet in
                 switch sheet {
@@ -264,7 +302,7 @@ struct ProfileView: View {
                     .overlay(Circle().strokeBorder(Theme.divider, lineWidth: 1))
             }
             .buttonStyle(PressedScaleButtonStyle())
-            .accessibilityLabel("Adı düzenle")
+            .accessibilityLabel(L("Adı düzenle"))
         }
         .padding(16)
         .background(
@@ -272,6 +310,129 @@ struct ProfileView: View {
                 .fill(Theme.surface)
         )
         .padding(.horizontal, 16)
+    }
+
+    // MARK: - Notifications row
+
+    @ViewBuilder
+    private var notifStatusBadge: some View {
+        switch notifAuthStatus {
+        case .authorized, .provisional, .ephemeral:
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark.circle.fill")
+                Text(L("Açık"))
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Color.green)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(Color.green.opacity(0.12)))
+        case .denied:
+            HStack(spacing: 4) {
+                Image(systemName: "xmark.circle.fill")
+                Text(L("Kapalı"))
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Theme.alert)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(Theme.alert.opacity(0.12)))
+        case .notDetermined:
+            Text(L("İzin ver"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.onAccent)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(Theme.ink))
+        @unknown default:
+            Text(L("—")).foregroundStyle(Theme.inkMute)
+        }
+    }
+
+    @ViewBuilder
+    private var healthKitStatusBadge: some View {
+        switch healthKitStatus {
+        case .requested:
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark.circle.fill")
+                Text(L("Bağlı"))
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Color.green)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(Color.green.opacity(0.12)))
+        case .notRequested:
+            Text(L("Bağla"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.onAccent)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(Theme.ink))
+        case .unsupported:
+            Text(L("Desteklenmiyor"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.inkMute)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(Theme.surfaceLow))
+        case .unknown:
+            Text(L("—"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.inkMute)
+        }
+    }
+
+    private func handleHealthKitTap() {
+        Haptics.light()
+        switch healthKitStatus {
+        case .notRequested:
+            // İzin diyaloğunu göster — Apple sleep/sex/birth/fitz hepsini soracak.
+            Task {
+                _ = try? await HealthKitService.shared.requestAuthorization()
+                healthKitStatus = await HealthKitService.shared.connectionStatus()
+                // Dialog'tan sonra hemen sync dene — kullanıcı allow ettiyse veri gelsin
+                await appState.syncHealthKitHistory()
+                await appState.syncHealthKitSleepToProfile()
+            }
+        case .requested, .unknown:
+            // Diyalog daha önce gösterilmiş. Apple state'i tek taraflı veremiyor →
+            // kullanıcı Settings'ten Health > SCare Routine'e gidip manuel açar/kapatır.
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        case .unsupported:
+            break
+        }
+    }
+
+    private func handleNotificationTap() {
+        Haptics.light()
+        switch notifAuthStatus {
+        case .notDetermined:
+            // İzin iste → granted ise Tier 0 sched + bekleyen admin queue'yu da poll et
+            Task {
+                await NotificationService.shared.loadTemplates(locale: appState.locale)
+                let granted = await NotificationService.shared.requestAuthorization()
+                if granted {
+                    await NotificationService.shared.scheduleTier0Activation()
+                    await NotificationService.shared.syncPendingQueue()
+                }
+                notifAuthStatus = await NotificationService.shared.authorizationStatus()
+            }
+        case .denied:
+            // iOS API'siyle kapalıyı açamayız — Settings'e yönlendir
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        case .authorized, .provisional, .ephemeral:
+            // Açıksa Settings'e gitsin (kapatmak için tek yol)
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        @unknown default:
+            break
+        }
     }
 
     private func completeRow(
@@ -332,7 +493,7 @@ struct ProfileView: View {
 
         let years = Calendar.current.dateComponents([.year], from: parsed, to: .now).year ?? 0
         let display = DateFormatter()
-        display.locale = Locale(identifier: "tr_TR")
+        display.locale = LanguageManager.shared.effectiveLocale
         display.dateStyle = .medium
         return "\(display.string(from: parsed)) (\(years))"
     }
@@ -346,23 +507,25 @@ struct ProfileView: View {
         guard let t = profile?.fitzpatrickType else { return nil }
         let desc: String = {
             switch t {
-            case 1: return "Çok açık"
-            case 2: return "Açık"
-            case 3: return "Açık-orta"
-            case 4: return "Orta"
-            case 5: return "Koyu"
-            case 6: return "Çok koyu"
+            case 1: return L("fitzpatrick_1")
+            case 2: return L("fitzpatrick_2")
+            case 3: return L("fitzpatrick_3")
+            case 4: return L("fitzpatrick_4")
+            case 5: return L("fitzpatrick_5")
+            case 6: return L("fitzpatrick_6")
             default: return ""
             }
         }()
-        return desc.isEmpty ? "Tip \(t)" : "Tip \(t) — \(desc)"
+        // "Tip %lld" / "Type %lld" format string — catalog locale-aware
+        let typeLabel = String(format: L("Tip %lld"), t)
+        return desc.isEmpty ? typeLabel : "\(typeLabel) — \(desc)"
     }
 
     private var photoModeDisplay: String? {
         guard let raw = profile?.defaultPhotoMode else { return nil }
         switch raw {
-        case PhotoMode.photoKept.rawValue: return "Fotoğraflar saklanıyor"
-        case PhotoMode.metricsOnly.rawValue: return "Sadece veri saklanıyor"
+        case PhotoMode.photoKept.rawValue: return L("Fotoğraflar saklanıyor")
+        case PhotoMode.metricsOnly.rawValue: return L("Sadece veri saklanıyor")
         default: return raw
         }
     }
@@ -371,35 +534,34 @@ struct ProfileView: View {
         guard let life = profile?.lifestyle else { return nil }
         var parts: [String] = []
         if let smoke = life.smoking {
-            parts.append("Sigara: \(smokingTR(smoke))")
+            parts.append(String(format: L("profile_smoking_prefix"), smokingTR(smoke)))
         }
         if let alcohol = life.alcoholFrequency {
-            parts.append("Alkol: \(alcoholTR(alcohol))")
+            parts.append(String(format: L("profile_alcohol_prefix"), alcoholTR(alcohol)))
         }
         if let s = life.sleepHoursAvg {
-            parts.append("Uyku: \(String(format: "%.1f", s)) sa")
-        }
-        if let w = life.waterGlassesPerDay {
-            parts.append("Su: \(w) bardak")
+            let hoursStr = s.formatted(.number.precision(.fractionLength(1)))
+            let hoursLabel = String(format: L("sleep_hours_short"), hoursStr)
+            parts.append(String(format: L("profile_sleep_prefix"), hoursLabel))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private func smokingTR(_ raw: String) -> String {
         switch raw {
-        case "never": return "Hiç"
-        case "occasionally", "occasional": return "Ara sıra"
-        case "daily": return "Günlük"
+        case "never": return L("smoking_never")
+        case "occasionally", "occasional": return L("smoking_occasional")
+        case "daily": return L("smoking_daily")
         default: return raw.capitalized
         }
     }
 
     private func alcoholTR(_ raw: String) -> String {
         switch raw {
-        case "never": return "Hiç"
-        case "rare", "rarely": return "Nadiren"
-        case "weekly": return "Haftalık"
-        case "daily": return "Günlük"
+        case "never": return L("alcohol_never")
+        case "rare", "rarely": return L("alcohol_rarely")
+        case "weekly": return L("alcohol_weekly")
+        case "daily": return L("alcohol_daily")
         default: return raw.capitalized
         }
     }

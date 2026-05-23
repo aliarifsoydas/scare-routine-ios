@@ -86,7 +86,7 @@ struct SkinLogEntrySheet: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
-            .navigationTitle("Bugün cildin nasıl?")
+            .navigationTitle(L("Bugün cildin nasıl?"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -126,7 +126,7 @@ struct SkinLogEntrySheet: View {
             Text(todayLongDate)
                 .font(Theme.Typo.body.weight(.medium))
                 .foregroundStyle(Theme.inkSoft)
-            Text("Hızlı bir öz değerlendirme — birkaç saniye sürer.")
+            Text(L("Hızlı bir öz değerlendirme — birkaç saniye sürer."))
                 .font(Theme.Typo.caption)
                 .foregroundStyle(Theme.inkMute)
         }
@@ -134,9 +134,11 @@ struct SkinLogEntrySheet: View {
     }
 
     private var selfieSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionTitle("Selfie ekle (opsiyonel)")
+        thumbnailRow
+    }
 
+    private var thumbnailRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 if let img = selfieImage {
                     Image(uiImage: img)
@@ -196,7 +198,7 @@ struct SkinLogEntrySheet: View {
                     selfieImage = nil
                     photosPickerItem = nil
                 } label: {
-                    Text("Selfieyi kaldır")
+                    Text(L("Selfieyi kaldır"))
                         .font(Theme.Typo.caption.weight(.medium))
                         .foregroundStyle(Theme.alert)
                 }
@@ -216,8 +218,8 @@ struct SkinLogEntrySheet: View {
                 .font(.system(size: 14, weight: .regular))
                 .foregroundStyle(Theme.inkSoft)
             Text(isMetricsOnly
-                 ? "Foto modu: Sadece veri — AI gözlem çıkarır, foto silinir."
-                 : "Foto modu: Foto saklanır — geçmişte tekrar göreceksin."
+                 ? L("Foto modu: Sadece veri — AI gözlem çıkarır, foto silinir.")
+                 : L("Foto modu: Foto saklanır — geçmişte tekrar göreceksin.")
             )
             .font(Theme.Typo.caption)
             .foregroundStyle(Theme.inkSoft)
@@ -233,13 +235,13 @@ struct SkinLogEntrySheet: View {
 
     private var metricsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle("Bugünkü cildin")
+            sectionTitle(L("Bugünkü cildin"))
 
-            metricRow(label: "Nem", value: $hydration, minLabel: "kuru", maxLabel: "nemli")
-            metricRow(label: "Kızarıklık", value: $redness, minLabel: "yok", maxLabel: "çok")
-            metricRow(label: "Yağlılık", value: $oiliness, minLabel: "yok", maxLabel: "çok")
-            metricRow(label: "Sivilce", value: $breakouts, minLabel: "yok", maxLabel: "çok")
-            metricRow(label: "Genel", value: $overall, minLabel: "kötü", maxLabel: "harika")
+            metricRow(label: L("Nem"), value: $hydration, minLabel: L("kuru"), maxLabel: L("nemli"))
+            metricRow(label: L("Kızarıklık"), value: $redness, minLabel: L("yok"), maxLabel: L("çok"))
+            metricRow(label: L("Yağlılık"), value: $oiliness, minLabel: L("yok"), maxLabel: L("çok"))
+            metricRow(label: L("Sivilce"), value: $breakouts, minLabel: L("yok"), maxLabel: L("çok"))
+            metricRow(label: L("Genel"), value: $overall, minLabel: L("kötü"), maxLabel: L("harika"))
         }
         .padding(16)
         .background(
@@ -277,7 +279,7 @@ struct SkinLogEntrySheet: View {
 
     private var symptomsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Semptomlar (opsiyonel)")
+            sectionTitle(L("Semptomlar (opsiyonel)"))
 
             // FlowLayout pattern — basit wrap için LazyVGrid kullanıyoruz
             FlowingChips(items: availableSymptoms, selected: selectedSymptoms) { sym in
@@ -292,10 +294,10 @@ struct SkinLogEntrySheet: View {
 
     private var notesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionTitle("Notlar (opsiyonel)")
+            sectionTitle(L("Notlar (opsiyonel)"))
 
             TextField(
-                "Bugün retinol kullandım, parfümlü bir ürün denedim…",
+                L("Bugün retinol kullandım, parfümlü bir ürün denedim…"),
                 text: $notes,
                 axis: .vertical
             )
@@ -312,7 +314,7 @@ struct SkinLogEntrySheet: View {
 
     private var lifestyleSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            sectionTitle("Ek bilgi (opsiyonel)")
+            sectionTitle(L("Ek bilgi (opsiyonel)"))
 
             // Uyku
             VStack(alignment: .leading, spacing: 6) {
@@ -321,7 +323,10 @@ struct SkinLogEntrySheet: View {
                         .font(Theme.Typo.body.weight(.medium))
                         .foregroundStyle(Theme.ink)
                     Spacer()
-                    Text(String(format: "%.1f saat", sleepHours))
+                    Text({
+                        let hoursStr = sleepHours.formatted(.number.precision(.fractionLength(1)))
+                        return String(format: L("sleep_hours_long"), hoursStr)
+                    }())
                         .font(Theme.Typo.caption.weight(.semibold))
                         .foregroundStyle(Theme.inkSoft)
                 }
@@ -360,7 +365,7 @@ struct SkinLogEntrySheet: View {
 
     private var todayLongDate: String {
         let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "tr_TR")
+        fmt.locale = LanguageManager.shared.effectiveLocale
         fmt.dateFormat = "d MMMM EEEE"
         return fmt.string(from: .now)
     }
@@ -387,7 +392,7 @@ struct SkinLogEntrySheet: View {
             do {
                 selfieUrl = try await SkinLogService.shared.uploadSelfie(img)
             } catch {
-                submitError = "Selfie yüklenemedi. Tekrar dene veya selfiesiz kaydet."
+                submitError = L("Selfie yüklenemedi. Tekrar dene veya selfiesiz kaydet.")
                 Haptics.error()
                 return
             }
@@ -473,7 +478,7 @@ struct FlowingChips: View {
         FlowLayout(spacing: 8, lineSpacing: 8) {
             ForEach(items, id: \.self) { item in
                 OnboardingChip(
-                    title: item,
+                    title: String(localized: String.LocalizationValue(item)),
                     symbol: nil,
                     isSelected: selected.contains(item)
                 ) {
@@ -532,48 +537,104 @@ struct FlowLayout: Layout {
     }
 }
 
-// MARK: - Camera picker (basit UIImagePickerController sarmalayıcı)
+// MARK: - Custom selfie camera sheet (CameraStageView + SelfieCameraController)
 
-/// Sade selfie kamera — UIImagePickerController ile ön kamera default. Ayrı bir
-/// "skin selfie" tasarımına gerek yok; kullanıcı bir foto çeker, biz UIImage alırız.
-struct SkinSelfieCameraPicker: UIViewControllerRepresentable {
+/// Branded selfie kamera sheet'i — `.sheet(isPresented:)` içinde gösterilir.
+///
+/// Onboarding cilt tonu ekranı ile aynı UX: CameraStageView (selfieFaceOval),
+/// SelfieCameraController, branded shutter button. Foto çekilince `onPicked`
+/// callback'i çağrılır ve sheet otomatik kapanır.
+///
+/// Permission denied durumunda Settings'e yönlendiren bir ekran gösterilir.
+struct SkinSelfieCameraPicker: View {
     var onPicked: (UIImage) -> Void
 
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        if UIImagePickerController.isSourceTypeAvailable(.camera) {
-            picker.sourceType = .camera
-            // Ön kamera mümkünse selfie için tercih et
-            if UIImagePickerController.isCameraDeviceAvailable(.front) {
-                picker.cameraDevice = .front
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var camera = SelfieCameraController()
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Theme.canvas.ignoresSafeArea()
+
+                if camera.permissionDenied {
+                    permissionDeniedContent
+                } else {
+                    cameraContent
+                }
             }
-        } else {
-            picker.sourceType = .photoLibrary
+            .navigationTitle(L("Selfie"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(L("İptal")) { dismiss() }
+                        .foregroundStyle(Theme.ink)
+                }
+            }
         }
-        picker.delegate = context.coordinator
-        return picker
     }
 
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    private var cameraContent: some View {
+        VStack(spacing: 20) {
+            Spacer(minLength: 8)
 
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
+            CameraStageView(controller: camera, mode: .selfieFaceOval)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20)
 
-    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: SkinSelfieCameraPicker
-        init(_ parent: SkinSelfieCameraPicker) { self.parent = parent }
+            Text(L("Yüzünü oval içine al, aydınlık ortamda en iyi sonucu verir."))
+                .font(Theme.Typo.caption)
+                .foregroundStyle(Theme.inkSoft)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
 
-        func imagePickerController(
-            _ picker: UIImagePickerController,
-            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]
-        ) {
-            if let img = info[.originalImage] as? UIImage {
-                parent.onPicked(img)
+            Spacer(minLength: 8)
+
+            CameraShutterButton(
+                isReady: camera.isReady,
+                isCapturing: camera.isCapturing
+            ) {
+                camera.capture { image in
+                    if let img = image {
+                        onPicked(img)
+                        dismiss()
+                    }
+                }
             }
-            picker.dismiss(animated: true)
+            .padding(.bottom, 24)
         }
+    }
 
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            picker.dismiss(animated: true)
+    private var permissionDeniedContent: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            Image(systemName: "camera.fill")
+                .font(.system(size: 56, weight: .light))
+                .foregroundStyle(Theme.inkMute)
+            Text(L("Kamera izni gerekli"))
+                .font(Theme.Typo.headline)
+                .foregroundStyle(Theme.ink)
+            Text(L("Selfie çekmek için Ayarlar > Gizlilik üzerinden kamera iznini açabilirsin."))
+                .font(Theme.Typo.body)
+                .foregroundStyle(Theme.inkSoft)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                Text(L("Ayarları aç"))
+                    .font(Theme.Typo.body.weight(.semibold))
+                    .foregroundStyle(Theme.onAccent)
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 12)
+                    .background(RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.ink))
+            }
+            .buttonStyle(PressedScaleButtonStyle())
+            Spacer()
         }
+        .padding(.horizontal, 24)
     }
 }

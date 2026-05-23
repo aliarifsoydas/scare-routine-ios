@@ -53,20 +53,28 @@ struct WelcomeView: View {
                 Spacer().frame(height: 24)
 
                 // Dil seçimi — alt alta iki büyük kart (native iOS pattern)
+                // Seçim hem `flow.locale` (backend payload için) hem `LanguageManager.current`'a
+                // yazılır → onboarding'in geri kalanı anında seçilen dilde render olur.
                 VStack(spacing: 10) {
                     BigSelectionCard(
-                        title: "Türkçe",
-                        subtitle: "Devam etmek için dilini seç",
+                        title: L("Türkçe"),
+                        subtitle: L("Devam etmek için dilini seç"),
                         symbol: "globe",
                         isSelected: flow.locale == "tr"
-                    ) { flow.locale = "tr" }
+                    ) {
+                        flow.locale = "tr"
+                        LanguageManager.shared.current = .tr
+                    }
 
                     BigSelectionCard(
-                        title: "English",
-                        subtitle: "Choose your language to continue",
+                        title: L("English"),
+                        subtitle: L("Choose your language to continue"),
                         symbol: "globe",
                         isSelected: flow.locale == "en"
-                    ) { flow.locale = "en" }
+                    ) {
+                        flow.locale = "en"
+                        LanguageManager.shared.current = .en
+                    }
                 }
                 .opacity(contentVisible ? 1 : 0)
                 .offset(y: contentVisible ? 0 : 14)
@@ -77,7 +85,7 @@ struct WelcomeView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "clock")
                         .font(.caption2.weight(.medium))
-                    Text("Yaklaşık 45 saniye")
+                    Text(L("Yaklaşık 45 saniye"))
                         .font(Theme.Typo.caption.weight(.medium))
                 }
                 .foregroundStyle(Theme.inkMute)
@@ -85,9 +93,10 @@ struct WelcomeView: View {
 
                 Spacer().frame(height: 12)
 
-                OnboardingPrimaryButton(title: "Başlayalım", hapticStyle: .light) {
+                OnboardingPrimaryButton(title: L("Başlayalım"), hapticStyle: .light) {
                     flow.goNext()
                 }
+                .track("continue")
                 .opacity(contentVisible ? 1 : 0)
                 .offset(y: contentVisible ? 0 : 16)
 
@@ -138,14 +147,14 @@ struct WelcomeView: View {
     /// Kullanıcı adı biliniyorsa kişiselleştirilmiş selamlama, aksi halde jenerik.
     private var greeting: String {
         if let name = userName, !name.isEmpty {
-            return "Hoş geldin, \(name)"
+            return "\(L("Hoş geldin")), \(name)"
         }
-        return "Hoş geldin"
+        return L("Hoş geldin")
     }
 
     /// Kısa pitch — tek satır, 5-7 kelime.
     private var pitch: String {
-        "Kişisel cilt asistanın, birlikte başlayalım."
+        L("Kişisel cilt asistanın, birlikte başlayalım.")
     }
 }
 

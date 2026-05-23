@@ -70,6 +70,10 @@ final class APIClient {
 
         if endpoint.requiresAuth, let token = KeychainHelper.read(.accessToken) {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            #if DEBUG
+            // GEÇİCİ — recognition pipeline probe için JWT'yi konsola bas, sonra sil.
+            print("[DEBUG-JWT-COPY-THIS]\n\(token)\n[/DEBUG-JWT]")
+            #endif
         }
 
         if let body {

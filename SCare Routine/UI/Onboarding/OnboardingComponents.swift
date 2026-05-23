@@ -384,6 +384,7 @@ struct OnboardingMultiSelectChips: View {
                         selected.insert(item.key)
                     }
                 }
+                .track(item.key, props: ["selected_after": !selected.contains(item.key)])
             }
         }
     }

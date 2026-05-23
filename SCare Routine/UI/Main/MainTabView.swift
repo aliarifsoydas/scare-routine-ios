@@ -14,33 +14,42 @@ struct MainTabView: View {
     let user: AuthUser
 
     @State private var selectedTab: Int = 0
+    @Environment(LanguageManager.self) private var languageManager
 
     var body: some View {
+        // Tab içerikleri için `.id(languageManager.current)`:
+        // Dil değişince her tab'ın content tree'si yeniden inşa olur, böylece
+        // `Text("literal")` cache'i temizlenir ve String(localized:) yeniden çalışır.
+        // Tab selection state (selectedTab) korunur çünkü TabView dışında.
         TabView(selection: $selectedTab) {
             HomeView(user: user, onNavigate: { tab in
                 Haptics.light()
                 selectedTab = tab
             })
+                .id(languageManager.current)
                 .tabItem {
-                    Label("Anasayfa", systemImage: "house.fill")
+                    Label(L("Anasayfa"), systemImage: "house.fill")
                 }
                 .tag(0)
 
             ArchiveView()
+                .id(languageManager.current)
                 .tabItem {
-                    Label("Arşiv", systemImage: "tray.full.fill")
+                    Label(L("Arşiv"), systemImage: "tray.full.fill")
                 }
                 .tag(1)
 
             SkinView()
+                .id(languageManager.current)
                 .tabItem {
-                    Label("Cilt", systemImage: "leaf.fill")
+                    Label(L("Cilt"), systemImage: "leaf.fill")
                 }
                 .tag(2)
 
             ProfileView(user: user)
+                .id(languageManager.current)
                 .tabItem {
-                    Label("Profil", systemImage: "person.crop.circle.fill")
+                    Label(L("Profil"), systemImage: "person.crop.circle.fill")
                 }
                 .tag(3)
         }

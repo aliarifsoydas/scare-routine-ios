@@ -24,12 +24,12 @@ struct HomeProfileHeroCard: View {
     private var fitzpatrickTR: String? {
         guard let t = profile?.fitzpatrickType else { return nil }
         switch t {
-        case 1: return "Çok açık"
-        case 2: return "Açık"
-        case 3: return "Açık-orta"
-        case 4: return "Orta"
-        case 5: return "Koyu"
-        case 6: return "Çok koyu"
+        case 1: return L("fitzpatrick_1")
+        case 2: return L("fitzpatrick_2")
+        case 3: return L("fitzpatrick_3")
+        case 4: return L("fitzpatrick_4")
+        case 5: return L("fitzpatrick_5")
+        case 6: return L("fitzpatrick_6")
         default: return nil
         }
     }
@@ -43,7 +43,7 @@ struct HomeProfileHeroCard: View {
         f.dateFormat = "yyyy-MM-dd"
         guard let parsed = f.date(from: bd) else { return nil }
         let years = Calendar.current.dateComponents([.year], from: parsed, to: .now).year ?? 0
-        return "\(years) yaşında"
+        return String(format: L("profile_age_format"), years)
     }
 
     var body: some View {
@@ -63,7 +63,7 @@ struct HomeProfileHeroCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(isComplete ? "Profilin hazır" : "Profilini tamamla")
+                    Text(isComplete ? L("Profilin hazır") : L("Profilini tamamla"))
                         .font(Theme.Typo.headline)
                         .foregroundStyle(Theme.ink)
 
@@ -93,18 +93,18 @@ struct HomeProfileHeroCard: View {
             )
         }
         .buttonStyle(PressedScaleButtonStyle())
-        .accessibilityLabel(isComplete ? "Profil hazır" : "Profilini tamamla")
+        .accessibilityLabel(isComplete ? L("Profil hazır") : L("Profilini tamamla"))
     }
 
     private var summaryLine: String {
         if isComplete {
             var parts: [String] = []
-            if let s = skinTypeTR { parts.append("Cilt: \(s)") }
-            if let t = fitzpatrickTR { parts.append("Ton: \(t)") }
+            if let s = skinTypeTR { parts.append(String(format: L("profile_skin_type_prefix"), s)) }
+            if let t = fitzpatrickTR { parts.append(String(format: L("profile_skin_tone_prefix"), t)) }
             if let a = ageDisplay { parts.append(a) }
-            return parts.isEmpty ? "Tüm bilgilerin hazır." : parts.joined(separator: " · ")
+            return parts.isEmpty ? L("profile_all_info_ready") : parts.joined(separator: " · ")
         } else {
-            return "Sana daha doğru öneriler sunabilmek için cilt tipini ve yaşını ekle."
+            return L("Sana daha doğru öneriler sunabilmek için cilt tipini ve yaşını ekle.")
         }
     }
 }

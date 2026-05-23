@@ -61,7 +61,7 @@ struct LifestylePayload: Encodable {
     var smoking: String?              // "never" | "occasionally" | "daily"
     var alcoholFrequency: String?     // "never" | "rarely" | "weekly" | "daily"
     var sleepHoursAvg: Double?        // 4-12
-    var waterGlassesPerDay: Int?      // 0-15
+    // waterGlassesPerDay removed — bilimsel kanıt zayıf, feature drop
 }
 
 // MARK: - Consent

@@ -19,14 +19,14 @@ struct ProfileEditBirthDateView: View {
                 Theme.canvas.ignoresSafeArea()
 
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Yaşına göre cilt ihtiyaçların önemli ölçüde değişir.")
+                    Text(L("Yaşına göre cilt ihtiyaçların önemli ölçüde değişir."))
                         .font(Theme.Typo.body)
                         .foregroundStyle(Theme.inkSoft)
                         .padding(.horizontal, 16)
                         .padding(.top, 4)
 
                     DatePicker(
-                        "Doğum tarihi",
+                        L("Doğum tarihi"),
                         selection: $date,
                         in: Date.minBirthDate ... Date.maxBirthDate,
                         displayedComponents: .date
@@ -44,7 +44,7 @@ struct ProfileEditBirthDateView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "person.fill")
                                 .font(.system(size: 13))
-                            Text("Yaşın: \(years)")
+                            Text(String(format: L("Yaşın: %d"), years))
                         }
                         .font(Theme.Typo.caption.weight(.medium))
                         .foregroundStyle(Theme.inkSoft)
@@ -62,18 +62,18 @@ struct ProfileEditBirthDateView: View {
                 }
                 .padding(.bottom, 16)
             }
-            .navigationTitle("Doğum tarihi")
+            .navigationTitle(L("Doğum tarihi"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("İptal") { dismiss() }
+                    Button(L("İptal")) { dismiss() }
                         .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isSaving {
                         ProgressView()
                     } else {
-                        Button("Kaydet", action: save)
+                        Button(L("Kaydet"), action: save)
                             .fontWeight(.semibold)
                     }
                 }

@@ -12,48 +12,56 @@ import SwiftUI
 struct PreferencesView: View {
     @Bindable var flow: OnboardingFlow
 
-    private let hairTypes: [(key: String, label: String, symbol: String?)] = [
-        ("straight", "Düz",         "line.horizontal"),
-        ("wavy",     "Dalgalı",     "waveform.path"),
-        ("curly",    "Kıvırcık",    "tornado"),
-        ("coily",    "Sıkı kıvırcık", "hurricane"),
-    ]
+    private var hairTypes: [(key: String, label: String, symbol: String?)] {
+        [
+            ("straight", L("Düz"),           "line.horizontal"),
+            ("wavy",     L("Dalgalı"),       "waveform.path"),
+            ("curly",    L("Kıvırcık"),      "tornado"),
+            ("coily",    L("Sıkı kıvırcık"), "hurricane"),
+        ]
+    }
 
-    private let hairConcerns: [(key: String, label: String, symbol: String?)] = [
-        ("dandruff",     "Kepek",       "snowflake"),
-        ("hair_loss",    "Dökülme",     "wind"),
-        ("dryness",      "Kuruluk",     "drop"),
-        ("frizz",        "Elektrik",    "bolt"),
-        ("oiliness",     "Yağlanma",    "drop.degreesign"),
-        ("split_ends",   "Kırık uçlar", "scissors"),
-        ("color_damage", "Boya hasarı", "paintpalette"),
-    ]
+    private var hairConcerns: [(key: String, label: String, symbol: String?)] {
+        [
+            ("dandruff",     L("Kepek"),       "snowflake"),
+            ("hair_loss",    L("Dökülme"),     "wind"),
+            ("dryness",      L("Kuruluk"),     "drop"),
+            ("frizz",        L("Elektrik"),    "bolt"),
+            ("oiliness",     L("Yağlanma"),    "drop.degreesign"),
+            ("split_ends",   L("Kırık uçlar"), "scissors"),
+            ("color_damage", L("Boya hasarı"), "paintpalette"),
+        ]
+    }
 
-    private let bodyConcerns: [(key: String, label: String, symbol: String?)] = [
-        ("dryness",        "Kuruluk",       "drop"),
-        ("stretch_marks",  "Çatlak",        "wave.3.forward"),
-        ("cellulite",      "Selülit",       "rectangle.grid.3x2"),
-        ("body_acne",      "Vücut sivilcesi", "bandage.fill"),
-        ("ingrown_hairs",  "Batık tüy",     "pin"),
-    ]
+    private var bodyConcerns: [(key: String, label: String, symbol: String?)] {
+        [
+            ("dryness",        L("Kuruluk"),         "drop"),
+            ("stretch_marks",  L("Çatlak"),          "wave.3.forward"),
+            ("cellulite",      L("Selülit"),         "rectangle.grid.3x2"),
+            ("body_acne",      L("Vücut sivilcesi"), "bandage.fill"),
+            ("ingrown_hairs",  L("Batık tüy"),       "pin"),
+        ]
+    }
 
-    private let makeupPrefs: [(key: String, label: String, symbol: String?)] = [
-        ("natural",       "Doğal",         "leaf"),
-        ("full_coverage", "Tam kapatıcı",  "circle.fill"),
-        ("matte",         "Mat",           "circle.dashed"),
-        ("dewy",          "Nemli",         "sparkles"),
-        ("long_lasting",  "Uzun süreli",   "clock"),
-    ]
+    private var makeupPrefs: [(key: String, label: String, symbol: String?)] {
+        [
+            ("natural",       L("Doğal"),         "leaf"),
+            ("full_coverage", L("Tam kapatıcı"),  "circle.fill"),
+            ("matte",         L("Mat"),           "circle.dashed"),
+            ("dewy",          L("Nemli"),         "sparkles"),
+            ("long_lasting",  L("Uzun süreli"),   "clock"),
+        ]
+    }
 
     var body: some View {
         OnboardingStepContainer {
             OnboardingStepHeader(
-                title: "Detaylar",
-                subtitle: "Birkaç soru daha — sonra önerilerin daha iyi olur.",
+                title: L("Detaylar"),
+                subtitle: L("Birkaç soru daha — sonra önerilerin daha iyi olur."),
                 symbol: "slider.horizontal.3"
             )
 
-            section(title: "Saç tipin", subtitle: nil) {
+            section(title: L("Saç tipin"), subtitle: nil) {
                 FlexibleChipGrid {
                     ForEach(hairTypes, id: \.key) { item in
                         OnboardingChip(
@@ -63,52 +71,56 @@ struct PreferencesView: View {
                         ) {
                             flow.selectedHairType = (flow.selectedHairType == item.key) ? nil : item.key
                         }
+                        .track("hairType.\(item.key)")
                     }
                 }
             }
 
-            section(title: "Saç şikayetlerin", subtitle: "Birden fazla seçebilirsin") {
+            section(title: L("Saç şikayetlerin"), subtitle: L("Birden fazla seçebilirsin")) {
                 OnboardingMultiSelectChips(items: hairConcerns, selected: $flow.selectedHairConcerns)
             }
 
-            section(title: "Vücut şikayetlerin", subtitle: "Birden fazla seçebilirsin") {
+            section(title: L("Vücut şikayetlerin"), subtitle: L("Birden fazla seçebilirsin")) {
                 OnboardingMultiSelectChips(items: bodyConcerns, selected: $flow.selectedBodyConcerns)
             }
 
-            section(title: "Makyaj tercihin", subtitle: "Birden fazla seçebilirsin") {
+            section(title: L("Makyaj tercihin"), subtitle: L("Birden fazla seçebilirsin")) {
                 OnboardingMultiSelectChips(items: makeupPrefs, selected: $flow.selectedMakeupPrefs)
             }
 
             // Foto modu
             VStack(alignment: .leading, spacing: 10) {
-                Text("Fotoğraflarını nasıl saklayalım?")
+                Text(L("Fotoğraflarını nasıl saklayalım?"))
                     .font(Theme.Typo.body.weight(.semibold))
                     .foregroundStyle(Theme.ink)
 
                 BigSelectionCard(
-                    title: "Fotoğrafları sakla",
-                    subtitle: "Before/after karşılaştırması yapabilirsin.",
+                    title: L("Fotoğrafları sakla"),
+                    subtitle: L("Before/after karşılaştırması yapabilirsin."),
                     symbol: "photo.on.rectangle.angled",
                     isSelected: flow.photoMode == .photoKept
                 ) { flow.photoMode = .photoKept }
+                .track("photoMode.photoKept")
 
                 BigSelectionCard(
-                    title: "Sadece veri sakla",
-                    subtitle: "Daha gizlilik dostu. Fotoğraf AI analizinden sonra silinir.",
+                    title: L("Sadece veri sakla"),
+                    subtitle: L("Daha gizlilik dostu. Fotoğraf AI analizinden sonra silinir."),
                     symbol: "lock.fill",
                     isSelected: flow.photoMode == .metricsOnly
                 ) { flow.photoMode = .metricsOnly }
+                .track("photoMode.metricsOnly")
             }
             .padding(.top, 8)
 
-            Text("Tüm sorular opsiyonel — boş bırakabilir, sonra profilden değiştirebilirsin.")
+            Text(L("Tüm sorular opsiyonel — boş bırakabilir, sonra profilden değiştirebilirsin."))
                 .font(Theme.Typo.caption)
                 .foregroundStyle(Theme.inkMute)
                 .padding(.top, 4)
         } cta: {
-            OnboardingPrimaryButton(title: "Devam") {
+            OnboardingPrimaryButton(title: L("Devam")) {
                 flow.goNext()
             }
+            .track("continue")
         }
     }
 

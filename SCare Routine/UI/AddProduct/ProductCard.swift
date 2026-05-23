@@ -7,8 +7,20 @@ struct ProductCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ZStack(alignment: .topTrailing) {
-                AsyncRemoteImage(url: item.photoUrl.flatMap(URL.init(string:)))
-                    .frame(height: 140)
+                // Beyaz arkaplan + aspect-fit:
+                //  • PNG transparent ürünler ürünler için temiz arka plan (eskiden bazı görseller
+                //    şeffaf gözüküyordu, theme rengi sızıyordu)
+                //  • Uzun/yatay görseller croplanmaz, kare alana sığar (.fit)
+                RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
+                    .fill(Color.white)
+                    .aspectRatio(1, contentMode: .fit)   // her kart kare — alignment grid'i için
+                    .overlay(
+                        AsyncRemoteImage(
+                            url: item.photoUrl.flatMap(URL.init(string:)),
+                            contentMode: .fit
+                        )
+                        .padding(8)
+                    )
                     .clipShape(RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
@@ -25,28 +37,31 @@ struct ProductCard: View {
                 }
             }
 
+            // Metin bloğu — TÜM kartlarda aynı yükseklik için fixed slots:
+            // 1) brand satırı (her zaman görünür, brand yoksa boş placeholder)
+            // 2) name 2 satır (lineLimit=2, reservesSpace ile sabit yükseklik)
+            // 3) nickname 1 satır (her zaman 1 satırlık alan, boşsa görünmez)
             VStack(alignment: .leading, spacing: 2) {
-                if let brand = item.brand, !brand.isEmpty {
-                    Text(brand.uppercased())
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Theme.inkSoft)
-                        .lineLimit(1)
-                }
+                Text(item.brand?.uppercased() ?? " ")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Theme.inkSoft)
+                    .lineLimit(1)
+
                 Text(displayTitle)
                     .font(Theme.Typo.body.weight(.medium))
                     .foregroundStyle(Theme.ink)
-                    .lineLimit(2)
+                    .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let nick = item.nickname, !nick.isEmpty {
-                    Text(nick)
-                        .font(Theme.Typo.caption)
-                        .foregroundStyle(Theme.inkMute)
-                        .lineLimit(1)
-                }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(item.nickname?.isEmpty == false ? item.nickname! : " ")
+                    .font(Theme.Typo.caption)
+                    .foregroundStyle(Theme.inkMute)
+                    .lineLimit(1)
             }
         }
         .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
                 .fill(Theme.surface)
@@ -56,6 +71,6 @@ struct ProductCard: View {
     private var displayTitle: String {
         if let n = item.name, !n.isEmpty { return n }
         if let nick = item.nickname, !nick.isEmpty { return nick }
-        return "Adsız ürün"
+        return L("Adsız ürün")
     }
 }
