@@ -2801,6 +2801,17 @@
         }
       }
     },
+    "Dikkat: aktif uyarılar var" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caution: active concerns detected"
+          }
+        }
+      }
+    },
     "Dil" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3006,6 +3017,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tap to add"
+          }
+        }
+      }
+    },
+    "Eklemekte özgürsün, patch test öneririz" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feel free to add — we recommend a patch test"
           }
         }
       }
@@ -8675,6 +8697,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Position your face in the oval, face the light"
+          }
+        }
+      }
+    },
+    "Zaten arşivinde benzer ürün" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Similar product already in your archive"
           }
         }
       }

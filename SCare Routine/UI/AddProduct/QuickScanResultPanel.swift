@@ -169,55 +169,10 @@ struct QuickScanResultPanel: View {
         .background(RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.surface))
     }
 
+    /// Loaded state — UI body extracted into `QuickEvaluationView` so the same
+    /// fit-score/verdict/pros/cons layout can be reused inline in `ProductReviewView`.
     private func loadedSection(_ result: QuickEvaluateResponse) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            // Fit score gauge + verdict
-            HStack(spacing: 18) {
-                FitScoreGauge(score: result.fitScore)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(verdictLabel(result.verdict))
-                        .font(Theme.Typo.title.weight(.semibold))
-                        .foregroundStyle(verdictColor(result.verdict))
-                    Text(verdictSubtitle(result.verdict))
-                        .font(Theme.Typo.body)
-                        .foregroundStyle(Theme.inkSoft)
-                }
-                Spacer()
-            }
-
-            // Duplicate warning (verdict == .duplicate veya backend dup ID döndürdüyse)
-            if let dupId = result.duplicateProductId, let dupName = result.duplicateProductName {
-                DuplicateWarningCard(productId: dupId, productName: dupName)
-            }
-
-            // Pros + cons (her ikisi de boşsa render etme)
-            if !result.pros.isEmpty || !result.cons.isEmpty {
-                ProConsList(pros: result.pros, cons: result.cons)
-            }
-
-            // Reasons (bullet list — açıklama)
-            if !result.reasons.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(L("Neden bu sıralama?"))
-                        .font(Theme.Typo.caption.weight(.semibold))
-                        .foregroundStyle(Theme.inkSoft)
-                        .textCase(.uppercase)
-                    ForEach(result.reasons, id: \.self) { reason in
-                        HStack(alignment: .top, spacing: 8) {
-                            Text("•")
-                                .foregroundStyle(Theme.inkSoft)
-                            Text(reason)
-                                .font(Theme.Typo.body)
-                                .foregroundStyle(Theme.ink)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.surfaceLow))
-            }
-        }
+        QuickEvaluationView(result: result, context: .scanning)
     }
 
     private func errorSection(_ msg: String) -> some View {
@@ -314,36 +269,6 @@ struct QuickScanResultPanel: View {
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             phase = .error(message)
-        }
-    }
-
-    // MARK: - Verdict mapping
-
-    private func verdictLabel(_ v: QuickEvaluateResponse.Verdict) -> String {
-        switch v {
-        case .greatFit:  return L("Cildine çok uygun")
-        case .goodFit:   return L("Cildine uygun")
-        case .neutral:   return L("Nötr — denenebilir")
-        case .skip:      return L("Şu an önerilmez")
-        case .duplicate: return L("Zaten arşivinde var")
-        }
-    }
-
-    private func verdictSubtitle(_ v: QuickEvaluateResponse.Verdict) -> String {
-        switch v {
-        case .greatFit:  return L("Profilinle iyi eşleşiyor")
-        case .goodFit:   return L("Genel olarak uygun")
-        case .neutral:   return L("Net bir artı/eksi yok")
-        case .skip:      return L("Cildine uygun değil")
-        case .duplicate: return L("Mevcut ürününe çok benziyor")
-        }
-    }
-
-    private func verdictColor(_ v: QuickEvaluateResponse.Verdict) -> Color {
-        switch v {
-        case .greatFit, .goodFit:    return Theme.success
-        case .neutral, .duplicate:   return Theme.ink
-        case .skip:                  return Theme.alert
         }
     }
 }

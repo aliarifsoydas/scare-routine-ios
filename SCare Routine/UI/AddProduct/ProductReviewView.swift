@@ -31,6 +31,15 @@ struct ProductReviewView: View {
     @State private var isSubmitting = false
     @State private var submitError: String?
 
+    /// Quick Scan tarzı "almalı mıyım?" AI değerlendirmesi — arşive ekleme akışında
+    /// inline gösterilir. `primaryProduct.id` değişirse (kullanıcı suggestion seçti)
+    /// `.task(id:)` tekrar tetiklenir ve değerlendirme güncellenir.
+    @State private var quickEvaluation: QuickEvaluateResponse?
+    /// `quickEvaluate` çağrısı sürüyor mu? Sadece *henüz sonuç yokken* loading
+    /// kartını göstermek için kullanılır; ikinci çağrıda eski sonuç ekranda
+    /// kalır, üzerine fade yapılabilir.
+    @State private var isEvaluating: Bool = false
+
     enum Mode { case review, manual }
 
     private var confidence: Confidence {
@@ -63,6 +72,10 @@ struct ProductReviewView: View {
                 if mode == .review {
                     if let product = primaryProduct {
                         productCard(product)
+                        // Quick Scan tarzı AI analiz — fit_score + verdict + pros/cons + duplicate.
+                        // Backend yanıtı boyunca loading kartı, hata ise sessizce atlanır
+                        // (arşive ekleme akışını bloklamamak için).
+                        quickEvaluationSection
                         // Review insights + ingredient warnings
                         if let s = recognized?.reviewSummary, s.count > 0 {
                             reviewSummaryPanel(s)
@@ -112,6 +125,86 @@ struct ProductReviewView: View {
                 mode = .manual
             }
             seedFormFromRecognized()
+        }
+        // Mode .review + valid katalog ID varsa quickEvaluate çağır.
+        // `evaluationProductID` değişirse (kullanıcı suggestion seçti) task yeniden başlar.
+        .task(id: evaluationProductID) {
+            await runQuickEvaluation()
+        }
+    }
+
+    /// `.task(id:)` için trigger — review modunda primary product ID'si.
+    /// Manuel modda nil → task no-op, mevcut sonuç temizlenir.
+    private var evaluationProductID: String? {
+        guard mode == .review else { return nil }
+        return primaryProduct?.id
+    }
+
+    /// Backend `/quick-evaluate` çağrısı. Hata olursa sessizce yutulur — arşive
+    /// ekleme akışı engellenmez. Cancellation (yeni ID gelirse) zaten otomatik.
+    @MainActor
+    private func runQuickEvaluation() async {
+        guard let pid = evaluationProductID, !pid.isEmpty else {
+            // Manuel moda geçildi veya ID yok — eski sonucu temizle.
+            quickEvaluation = nil
+            isEvaluating = false
+            return
+        }
+        isEvaluating = true
+        defer { isEvaluating = false }
+        do {
+            let result = try await ProductScanService.shared.quickEvaluate(productId: pid)
+            // Task cancellation check — kullanıcı hızla başka suggestion seçtiyse
+            // bu stale yanıtı yazma.
+            try Task.checkCancellation()
+            quickEvaluation = result
+        } catch is CancellationError {
+            // Yeni task başladı, bu eski olanın yanıtını yazmıyoruz — sessiz çık.
+            return
+        } catch {
+            // Backend hatası: archive flow'u bloklamamak için sessizce atla.
+            // Mevcut quickEvaluation varsa (eski ID'den) görünür kalır; yoksa
+            // hiç bir şey gösterilmez.
+            #if DEBUG
+            print("[ProductReviewView] quickEvaluate failed: \(error)")
+            #endif
+        }
+    }
+
+    // MARK: - Quick Evaluation section (inline AI Analiz)
+
+    /// Ürün kartının altında gösterilen AI değerlendirme bölümü.
+    /// - Çağrı sürüyor + eski sonuç yok → ince loading kartı
+    /// - Sonuç var → `QuickEvaluationView` `.reviewing` context'inde
+    /// - Hata + sonuç yok → hiçbir şey gösterme (silent fail)
+    @ViewBuilder
+    private var quickEvaluationSection: some View {
+        if let eval = quickEvaluation {
+            QuickEvaluationView(result: eval, context: .reviewing)
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
+                        .fill(Theme.surface)
+                )
+        } else if isEvaluating {
+            HStack(spacing: 12) {
+                ProgressView().tint(Theme.ink)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L("Senin için değerlendiriliyor"))
+                        .font(Theme.Typo.body.weight(.medium))
+                        .foregroundStyle(Theme.ink)
+                    Text(L("Cilt profilin ve arşivin karşılaştırılıyor"))
+                        .font(Theme.Typo.caption)
+                        .foregroundStyle(Theme.inkSoft)
+                }
+                Spacer()
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
+                    .fill(Theme.surfaceLow)
+            )
         }
     }
 
