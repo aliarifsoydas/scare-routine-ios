@@ -100,6 +100,10 @@ final class OnboardingFlow {
     var selectedSkinType: SkinType? = nil
     /// Kullanıcı açıkça "Emin değilim" dediyse Devam butonunu unlock etmek için
     var skinTypeAcknowledgedUnknown: Bool = false
+    /// Multi-select cilt şikayetleri — backend `skin_concerns` JSON array.
+    /// Vocab: acne, dryness, sensitivity, dark_spots, wrinkles, redness,
+    /// large_pores, dullness, blackheads, oiliness.
+    var selectedSkinConcerns: Set<String> = []
 
     // Step 4: HealthKit sonuçları
     var healthKit: HealthKitSnapshot? = nil
@@ -110,14 +114,28 @@ final class OnboardingFlow {
     var manualBiologicalSex: String? = nil      // "female"|"male"|"non_binary"|"prefer_not_to_say"
     var manualSleepHours: Double? = nil
     var manualWaterGlasses: Int? = nil
+    /// "never" | "occasionally" | "daily" (lifestyle.smoking)
+    var manualSmoking: String? = nil
+    /// "never" | "rarely" | "weekly" | "daily" (lifestyle.alcohol_frequency)
+    var manualAlcohol: String? = nil
+    /// female gender seçildiyse sorulur — true (hamile), false (hayır), nil (cevap yok)
+    var pregnancyAnswer: Bool? = nil
 
-    // Step 5: Preferences — sadece foto modu (kategoriler onboarding'den kaldırıldı,
-    // hepsi true default ile backend'e gönderilir; kullanıcı ileride arşive ürün
-    // ekledikçe gerçek kategori dağılımı oluşur).
+    // Step 5: Preferences — saç, vücut, makyaj tercihleri + foto modu
+    // Kategoriler onboarding'den kaldırıldı (arşivden inferred).
     let categorySkincare: Bool = true
     let categoryHaircare: Bool = true
     let categoryBodycare: Bool = true
     let categoryMakeup: Bool = true
+
+    /// "straight" | "wavy" | "curly" | "coily" — backend hair_type
+    var selectedHairType: String? = nil
+    /// Multi-select saç şikayetleri — backend `hair_concerns` JSON array.
+    var selectedHairConcerns: Set<String> = []
+    /// Multi-select vücut şikayetleri — backend `body_concerns` JSON array.
+    var selectedBodyConcerns: Set<String> = []
+    /// Multi-select makyaj tercihleri — backend `makeup_pref` (dict olarak, multi-select array değeri).
+    var selectedMakeupPrefs: Set<String> = []
 
     // Foto modu — default kullanıcı tercihiyle: fotoğrafları koru
     var photoMode: PhotoMode = .photoKept
@@ -251,32 +269,48 @@ final class OnboardingFlow {
     // MARK: - Payload üretimi
 
     func buildProfileRequest() -> ProfileUpdateRequest {
-        // Manuel girilen / HealthKit'ten gelen uyku/su lifestyle alanlarına yansır
+        // Lifestyle: manuel veya HealthKit'ten gelen uyku/su + onboarding'de toplanan smoking/alcohol
         let lifestyle: LifestylePayload? = {
             let sleep = effectiveSleepHours
             let water = effectiveWaterGlasses
-            if sleep == nil && water == nil { return nil }
+            let smoking = manualSmoking
+            let alcohol = manualAlcohol
+            if sleep == nil && water == nil && smoking == nil && alcohol == nil { return nil }
             return LifestylePayload(
-                smoking: nil,
-                alcoholFrequency: nil,
+                smoking: smoking,
+                alcoholFrequency: alcohol,
                 sleepHoursAvg: sleep,
                 waterGlassesPerDay: water
             )
         }()
 
+        // Country: locale'den otomatik (TR/EN -> TR/US fallback). User region varsa onu tercih et.
+        let country: String? = {
+            if let region = Locale.current.region?.identifier, region.count == 2 { return region }
+            if locale == "tr" { return "TR" }
+            if locale == "en" { return "US" }
+            return nil
+        }()
+
+        // makeup_pref: Set<String> → [String: Bool] (backend dict bekliyor)
+        let makeupDict: [String: Bool]? = {
+            if selectedMakeupPrefs.isEmpty { return nil }
+            return Dictionary(uniqueKeysWithValues: selectedMakeupPrefs.map { ($0, true) })
+        }()
+
         return ProfileUpdateRequest(
             skinType: selectedSkinType?.rawValue,
-            skinConcerns: nil,
-            hairType: nil,
-            hairConcerns: nil,
-            bodyConcerns: nil,
-            makeupPref: nil,
+            skinConcerns: selectedSkinConcerns.isEmpty ? nil : Array(selectedSkinConcerns).sorted(),
+            hairType: selectedHairType,
+            hairConcerns: selectedHairConcerns.isEmpty ? nil : Array(selectedHairConcerns).sorted(),
+            bodyConcerns: selectedBodyConcerns.isEmpty ? nil : Array(selectedBodyConcerns).sorted(),
+            makeupPref: makeupDict,
             birthDate: effectiveBirthDateISO,
             gender: effectiveBiologicalSex,
             fitzpatrickType: healthKit?.fitzpatrickType,
             lifestyle: lifestyle,
-            country: nil,
-            pregnancy: nil,
+            country: country,
+            pregnancy: pregnancyAnswer,
             defaultPhotoMode: photoMode.rawValue,
             locale: locale,
             categories: selectedCategories

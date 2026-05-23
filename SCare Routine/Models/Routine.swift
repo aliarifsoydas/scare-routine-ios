@@ -7,7 +7,10 @@ final class Routine {
     var user: User?
     var name: String                         // "Sabah cilt", "Akşam saç"
     var categoryID: String?                  // FK to ProductCategory.id (opsiyonel)
-    var schedule: RoutineSchedule
+    /// JSON-encoded RoutineSchedule. SwiftData @Model + custom Codable struct
+    /// Swift 6 strict concurrency'de macro tarafı sorun çıkarıyor — Data olarak
+    /// saklıyoruz, `scheduleValue` computed property ile parse edilir.
+    var scheduleData: Data?
     var reminder: Bool = true
     var colorHex: String?
     var emoji: String?
@@ -31,9 +34,23 @@ final class Routine {
     ) {
         self.id = id
         self.name = name
-        self.schedule = schedule
+        self.scheduleData = try? JSONEncoder().encode(schedule)
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+    }
+
+    /// JSON Data ↔ RoutineSchedule köprüsü.
+    var scheduleValue: RoutineSchedule {
+        get {
+            guard let scheduleData,
+                  let s = try? JSONDecoder().decode(RoutineSchedule.self, from: scheduleData) else {
+                return RoutineSchedule()
+            }
+            return s
+        }
+        set {
+            scheduleData = try? JSONEncoder().encode(newValue)
+        }
     }
 }
 

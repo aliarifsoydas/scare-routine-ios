@@ -179,6 +179,19 @@ public struct OnboardingHostView: View {
         // Preparing animasyonunu hemen göster — backend submit'i paralel olarak çalışsın
         showPreparing = true
 
+        // Telemetry — submit tıklandı + dolu olan alanlar
+        Telemetry.shared.tap("onboarding.submit", props: [
+            "skin_type": flow.selectedSkinType?.rawValue ?? "unknown",
+            "skin_concerns_count": flow.selectedSkinConcerns.count,
+            "hair_type": flow.selectedHairType ?? "none",
+            "hair_concerns_count": flow.selectedHairConcerns.count,
+            "body_concerns_count": flow.selectedBodyConcerns.count,
+            "makeup_prefs_count": flow.selectedMakeupPrefs.count,
+            "has_health_data": flow.healthKit != nil,
+            "has_manual_data": flow.manualBirthDate != nil || flow.manualBiologicalSex != nil,
+        ])
+        let submitTiming = Telemetry.shared.startTiming("onboarding.submit_to_complete")
+
         Task {
             flow.submitError = nil
             flow.isSubmitting = true
@@ -189,6 +202,10 @@ public struct OnboardingHostView: View {
 
             do {
                 try await appState.completeOnboarding(flow)
+                await MainActor.run {
+                    Telemetry.shared.endTiming(submitTiming, props: ["result": "success"])
+                    Telemetry.shared.flush()
+                }
                 // Başarılı — preparing animasyonu onComplete'ında bootstrap çağırır
                 // ve MainTabView'a geçer (AppState.phase değişiminde)
             } catch {
@@ -202,6 +219,10 @@ public struct OnboardingHostView: View {
                 }
                 flow.submitError = msg
                 errorAlert = msg
+                await MainActor.run {
+                    Telemetry.shared.endTiming(submitTiming, props: ["result": "error"])
+                    Telemetry.shared.error("onboarding.submit_failed", message: msg)
+                }
                 Haptics.error()
             }
         }

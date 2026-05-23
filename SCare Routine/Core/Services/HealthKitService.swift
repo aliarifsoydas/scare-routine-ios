@@ -13,15 +13,12 @@ struct HealthKitSnapshot: Sendable, Equatable {
     let fitzpatrickType: Int?
     /// Son 30 günün günlük uyku ortalaması (saat cinsinden)
     let avgSleepHoursLast30Days: Double?
-    /// Son 30 günün günlük su tüketimi ortalaması (250ml = 1 bardak varsayımı)
-    let avgWaterGlassesLast30Days: Int?
 
     static let empty = HealthKitSnapshot(
         birthDate: nil,
         biologicalSex: nil,
         fitzpatrickType: nil,
-        avgSleepHoursLast30Days: nil,
-        avgWaterGlassesLast30Days: nil
+        avgSleepHoursLast30Days: nil
     )
 
     /// En az bir veri var mı? UI'da "Şu bilgiler okundu" özeti göstermek için.
@@ -30,7 +27,6 @@ struct HealthKitSnapshot: Sendable, Equatable {
         || biologicalSex != nil
         || fitzpatrickType != nil
         || avgSleepHoursLast30Days != nil
-        || avgWaterGlassesLast30Days != nil
     }
 }
 
@@ -64,9 +60,7 @@ final class HealthKitService {
         if let fitz = HKObjectType.characteristicType(forIdentifier: .fitzpatrickSkinType) {
             set.insert(fitz)
         }
-        if let water = HKObjectType.quantityType(forIdentifier: .dietaryWater) {
-            set.insert(water)
-        }
+        // dietaryWater removed — bilimsel kanıt zayıf, feature drop
         if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
             set.insert(sleep)
         }
@@ -98,14 +92,11 @@ final class HealthKitService {
         async let sex: String? = readBiologicalSex()
         async let fitz: Int? = readFitzpatrickType()
         async let sleep: Double? = readAverageSleepHours(days: 30)
-        async let water: Int? = readAverageWaterGlasses(days: 30)
-
         return await HealthKitSnapshot(
             birthDate: birth,
             biologicalSex: sex,
             fitzpatrickType: fitz,
-            avgSleepHoursLast30Days: sleep,
-            avgWaterGlassesLast30Days: water
+            avgSleepHoursLast30Days: sleep
         )
     }
 
@@ -155,6 +146,101 @@ final class HealthKitService {
 
     // MARK: - Uyku
 
+    /// HealthKit "bağlı mı" gevşek tahmin — Apple read izni gerçek durumunu
+    /// API'den vermez (privacy). `statusForAuthorizationRequest` ile diyaloğun
+    /// daha önce gösterilip gösterilmediğini öğreniriz: `.unnecessary` → user
+    /// karar vermiş (allow ya da deny), `.shouldRequest` → henüz sorulmadı.
+    enum ConnectionStatus {
+        case unsupported    // cihaz HealthKit desteklemiyor (iPad eski model gibi)
+        case notRequested   // diyalog gösterilmedi (shouldRequest)
+        case requested      // diyalog gösterilmiş, kullanıcı karar vermiş (allow VEYA deny)
+        case unknown
+    }
+
+    /// HealthKit bağlantı durumu — ProfileView "Apple Health" satırı için.
+    /// True "denied" döndüremeyiz, sadece "dialog soruldu mu" inputu.
+    func connectionStatus() async -> ConnectionStatus {
+        guard isAvailable else { return .unsupported }
+        let shareTypes: Set<HKSampleType> = []
+        do {
+            let status = try await store.statusForAuthorizationRequest(toShare: shareTypes, read: readTypes)
+            switch status {
+            case .unnecessary: return .requested
+            case .shouldRequest: return .notRequested
+            case .unknown: return .unknown
+            @unknown default: return .unknown
+            }
+        } catch {
+            return .unknown
+        }
+    }
+
+    /// Son `days` günün günlük uyku saati ortalamasını dışarıya aç.
+    /// AppState foreground transition'larda çağırıp profile'a sync eder.
+    ///
+    /// **Auto-request KAPATILDI**: Onboarding'de HealthSyncView'da kullanıcı Connect'e
+    /// basana kadar izin istenmez. Read çağrısı: izin verilmişse veri döner, verilmemişse
+    /// boş döner — popup yok. Bu UX kritik: app cold start'ta sistem iznine boğmaz.
+    func currentAverageSleepHours(days: Int) async -> Double? {
+        guard isAvailable else { return nil }
+        return await readAverageSleepHours(days: days)
+    }
+
+    // MARK: - Daily sleep history (geriye dönük backend persistence için)
+
+    /// Gün gün uyku saati: `"YYYY-MM-DD" → hours`. Backend `health_metrics_daily`
+    /// tablosuna upsert için. Local timezone'da day boundary kullanılır.
+    ///
+    /// İlk sync'te `days = 90`, sonraki foreground'larda `days = 14` (delta safe).
+    /// `asleepCore + asleepREM + asleepDeep + asleepUnspecified` toplanır.
+    /// `inBed` hariç tutulur.
+    func readDailySleepHours(days: Int) async -> [String: Double] {
+        guard isAvailable else { return [:] }
+        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return [:] }
+        // Auto-request KAPATILDI — bkz currentAverageSleepHours yorumu.
+        // Background sync popup'u tetikleyemez; user explicit Connect ile izin verir.
+
+        let end = Date()
+        guard let start = Calendar.current.date(byAdding: .day, value: -days, to: end) else { return [:] }
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+
+        return await withCheckedContinuation { (cont: CheckedContinuation<[String: Double], Never>) in
+            let query = HKSampleQuery(
+                sampleType: sleepType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, samples, _ in
+                guard let samples = samples as? [HKCategorySample], !samples.isEmpty else {
+                    cont.resume(returning: [:]); return
+                }
+                let asleepValues: Set<Int> = [
+                    HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepREM.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue
+                ]
+                // Apple Watch sleep: 22:00 başlar, 07:00 biter → "ait olduğu gün" sabah saatidir.
+                // Sample.endDate'in tarihi (uyandığın gün) → sleep o güne ait. Bu pratik kural.
+                let cal = Calendar.current
+                let fmt = DateFormatter()
+                fmt.dateFormat = "yyyy-MM-dd"
+                fmt.timeZone = .current
+
+                var dayToSeconds: [String: TimeInterval] = [:]
+                for s in samples where asleepValues.contains(s.value) {
+                    let duration = s.endDate.timeIntervalSince(s.startDate)
+                    let dayKey = fmt.string(from: s.endDate)
+                    dayToSeconds[dayKey, default: 0] += duration
+                    _ = cal  // suppress unused (ileride day-of-week analizi için)
+                }
+                let dayToHours = dayToSeconds.mapValues { $0 / 3600.0 }
+                cont.resume(returning: dayToHours)
+            }
+            store.execute(query)
+        }
+    }
+
     /// Son `days` günün günlük uyku saati ortalaması.
     /// `asleepCore`, `asleepREM`, `asleepDeep`, `asleepUnspecified` segmentleri toplanır.
     /// `inBed` segmentleri DIŞARIDA tutulur — gerçek uyku süresi istenir.
@@ -197,35 +283,5 @@ final class HealthKitService {
         }
     }
 
-    // MARK: - Su
-
-    /// Son `days` günün günlük su tüketimi → 250ml = 1 bardak çevirimi.
-    /// HKStatisticsQuery cumulative sum kullanır.
-    private func readAverageWaterGlasses(days: Int) async -> Int? {
-        guard let waterType = HKObjectType.quantityType(forIdentifier: .dietaryWater) else {
-            return nil
-        }
-        let end = Date()
-        guard let start = Calendar.current.date(byAdding: .day, value: -days, to: end) else {
-            return nil
-        }
-        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
-
-        return await withCheckedContinuation { (cont: CheckedContinuation<Int?, Never>) in
-            let query = HKStatisticsQuery(
-                quantityType: waterType,
-                quantitySamplePredicate: predicate,
-                options: .cumulativeSum
-            ) { _, stats, _ in
-                guard let sum = stats?.sumQuantity() else {
-                    cont.resume(returning: nil); return
-                }
-                let totalMl = sum.doubleValue(for: HKUnit.literUnit(with: .milli))
-                guard totalMl > 0 else { cont.resume(returning: nil); return }
-                let glassesPerDay = (totalMl / 250.0) / Double(days)
-                cont.resume(returning: Int(glassesPerDay.rounded()))
-            }
-            store.execute(query)
-        }
-    }
+    // Su (dietaryWater) okuma kaldırıldı — bilimsel kanıt zayıf, feature drop.
 }

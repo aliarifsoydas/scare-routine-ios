@@ -3,7 +3,9 @@ import Foundation
 // MARK: - Profil enum'ları
 
 enum SkinType: String, Codable, CaseIterable, Identifiable {
-    case oily, dry, combo, normal, sensitive
+    case oily, dry
+    case combo = "combination"   // backend "combination" bekler
+    case normal, sensitive
     var id: String { rawValue }
 }
 
@@ -47,9 +49,13 @@ enum Weekday: Int, Codable, CaseIterable, Identifiable {
     var id: Int { rawValue }
     var shortNameTR: String {
         switch self {
-        case .monday: return "Pzt"; case .tuesday: return "Sal"
-        case .wednesday: return "Çar"; case .thursday: return "Per"
-        case .friday: return "Cum"; case .saturday: return "Cmt"; case .sunday: return "Paz"
+        case .monday: return L("weekday_short_mon")
+        case .tuesday: return L("weekday_short_tue")
+        case .wednesday: return L("weekday_short_wed")
+        case .thursday: return L("weekday_short_thu")
+        case .friday: return L("weekday_short_fri")
+        case .saturday: return L("weekday_short_sat")
+        case .sunday: return L("weekday_short_sun")
         }
     }
 }

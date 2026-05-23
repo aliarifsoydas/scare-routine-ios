@@ -14,7 +14,7 @@ struct ProfileUpdateRequest: Encodable {
     var hairType: String?
     var hairConcerns: [String]?
     var bodyConcerns: [String]?
-    var makeupPref: [String]?
+    var makeupPref: [String: Bool]?
     var birthDate: String?              // ISO date "YYYY-MM-DD"
     var gender: String?                 // "female" | "male" | "non_binary" | "prefer_not_to_say"
     var fitzpatrickType: Int?           // 1-6

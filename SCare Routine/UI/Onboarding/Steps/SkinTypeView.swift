@@ -13,6 +13,21 @@ struct SkinTypeView: View {
     /// 5 ana cilt tipi — sabit sıra (yağlı, kuru, karma, normal, hassas)
     private let types: [SkinType] = [.oily, .dry, .combo, .normal, .sensitive]
 
+    /// Skin concerns vocab — backend `skin_concerns` JSON array değerleri.
+    /// Key payload'a gider; label kullanıcıya gösterilir.
+    private let concerns: [(key: String, label: String, symbol: String?)] = [
+        ("acne",        "Sivilce",          "bandage.fill"),
+        ("blackheads",  "Siyah nokta",      "circle.dotted.circle"),
+        ("oiliness",    "Yağlanma",         "drop.degreesign"),
+        ("dryness",     "Kuruluk",          "drop"),
+        ("sensitivity", "Hassasiyet",       "exclamationmark.shield"),
+        ("redness",     "Kızarıklık",       "flame"),
+        ("dark_spots",  "Lekeler",          "sparkle.magnifyingglass"),
+        ("wrinkles",    "Kırışıklık",       "scribble.variable"),
+        ("large_pores", "Gözenek",          "circle.grid.cross"),
+        ("dullness",    "Mat görünüm",      "moon.zzz"),
+    ]
+
     var body: some View {
         OnboardingStepContainer {
             OnboardingStepHeader(
@@ -37,6 +52,9 @@ struct SkinTypeView: View {
 
             unsureLink
                 .padding(.top, -2) // 10pt kart spacing + 8pt ⇒ ~18pt görsel boşluk
+
+            concernsSection
+                .padding(.top, 8)
         } cta: {
             VStack(spacing: 12) {
                 // Mini reveal — CTA'nın hemen üstünde STICKY, scroll'la kaybolmaz.
@@ -71,6 +89,26 @@ struct SkinTypeView: View {
                 value: flow.skinTypeAcknowledgedUnknown
             )
         }
+    }
+
+    /// Cilt şikayetleri — opsiyonel multi-select. Kullanıcı atlayabilir.
+    /// "En az bir tane seçmek zorunda değil" hissi için header subtle.
+    private var concernsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Hangi konularda destek istersin?")
+                    .font(Theme.Typo.body.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                Text("Birden fazla seçebilirsin (opsiyonel)")
+                    .font(Theme.Typo.caption)
+                    .foregroundStyle(Theme.inkMute)
+            }
+            OnboardingMultiSelectChips(
+                items: concerns,
+                selected: $flow.selectedSkinConcerns
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Sade text link — büyük kart değil, native iOS "skip-y" hissi.

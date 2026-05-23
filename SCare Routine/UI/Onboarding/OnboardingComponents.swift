@@ -361,3 +361,96 @@ struct OnboardingChip: View {
         .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : .isButton)
     }
 }
+
+// MARK: - Multi-select chip grid (skin_concerns, hair_concerns, body_concerns, makeup_pref için)
+
+/// Bir Set<String> üzerinde reactive multi-select chip grid.
+/// Items: (key, displayLabel) — key payload'a gider, label kullanıcıya gösterilir.
+struct OnboardingMultiSelectChips: View {
+    let items: [(key: String, label: String, symbol: String?)]
+    @Binding var selected: Set<String>
+
+    var body: some View {
+        FlexibleChipGrid {
+            ForEach(items, id: \.key) { item in
+                OnboardingChip(
+                    title: item.label,
+                    symbol: item.symbol,
+                    isSelected: selected.contains(item.key)
+                ) {
+                    if selected.contains(item.key) {
+                        selected.remove(item.key)
+                    } else {
+                        selected.insert(item.key)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Chip'leri row'lara akıtan basit flex layout (SwiftUI Layout API).
+struct FlexibleChipGrid<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        FlexLayout(spacing: 8, lineSpacing: 8) { content }
+    }
+}
+
+/// FlexLayout — chip wrapping için minimal `Layout` impl.
+/// Children'ı sırayla yerleştirir, satır dolunca alta geçer.
+struct FlexLayout: Layout {
+    var spacing: CGFloat
+    var lineSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var rows: [[CGSize]] = [[]]
+        var rowWidth: CGFloat = 0
+        for sv in subviews {
+            let size = sv.sizeThatFits(.unspecified)
+            let needed = rowWidth == 0 ? size.width : rowWidth + spacing + size.width
+            if needed > maxWidth {
+                rows.append([size])
+                rowWidth = size.width
+            } else {
+                rows[rows.count - 1].append(size)
+                rowWidth = needed
+            }
+        }
+        var height: CGFloat = 0
+        for (idx, row) in rows.enumerated() {
+            let rowH = row.map { $0.height }.max() ?? 0
+            height += rowH
+            if idx > 0 { height += lineSpacing }
+        }
+        var maxRowWidth: CGFloat = 0
+        for row in rows {
+            let rowSum = row.reduce(CGFloat(0)) { $0 + $1.width }
+            let gaps = CGFloat(max(0, row.count - 1)) * spacing
+            let rowW = rowSum + gaps
+            if rowW > maxRowWidth { maxRowWidth = rowW }
+        }
+        return CGSize(width: maxRowWidth, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let maxWidth = bounds.width
+        var x: CGFloat = bounds.minX
+        var y: CGFloat = bounds.minY
+        var rowHeight: CGFloat = 0
+        for sv in subviews {
+            let size = sv.sizeThatFits(.unspecified)
+            if x + size.width > bounds.maxX, x > bounds.minX {
+                x = bounds.minX
+                y += rowHeight + lineSpacing
+                rowHeight = 0
+            }
+            sv.place(at: CGPoint(x: x, y: y), anchor: .topLeading, proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+            _ = maxWidth
+        }
+    }
+}

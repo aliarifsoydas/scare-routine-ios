@@ -19,6 +19,9 @@ struct HealthSyncView: View {
     @State private var draftSex: String? = nil
     @State private var draftSleep: Double = 7.5
     @State private var draftWater: Int = 8
+    @State private var draftSmoking: String? = nil       // never | occasionally | daily
+    @State private var draftAlcohol: String? = nil       // never | rarely | weekly | daily
+    @State private var draftPregnancy: Bool? = nil       // only asked if draftSex == "female"
 
     private var snapshot: HealthKitSnapshot? { flow.healthKit }
 
@@ -252,6 +255,65 @@ struct HealthSyncView: View {
                         .font(Theme.Typo.caption)
                         .foregroundStyle(Theme.inkSoft)
                 }
+
+                Section("Sigara") {
+                    FlexibleChipRow(items: [
+                        (value: "never", label: "Kullanmıyorum"),
+                        (value: "occasionally", label: "Ara sıra"),
+                        (value: "daily", label: "Her gün")
+                    ]) { option in
+                        OnboardingChip(
+                            title: option.label,
+                            symbol: nil,
+                            isSelected: draftSmoking == option.value
+                        ) {
+                            draftSmoking = (draftSmoking == option.value) ? nil : option.value
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                }
+
+                Section("Alkol") {
+                    FlexibleChipRow(items: [
+                        (value: "never", label: "Hiç"),
+                        (value: "rarely", label: "Nadiren"),
+                        (value: "weekly", label: "Haftada"),
+                        (value: "daily", label: "Her gün")
+                    ]) { option in
+                        OnboardingChip(
+                            title: option.label,
+                            symbol: nil,
+                            isSelected: draftAlcohol == option.value
+                        ) {
+                            draftAlcohol = (draftAlcohol == option.value) ? nil : option.value
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                }
+
+                if draftSex == "female" {
+                    Section("Hamilelik") {
+                        FlexibleChipRow(items: [
+                            (value: "no", label: "Hayır"),
+                            (value: "yes", label: "Evet")
+                        ]) { option in
+                            OnboardingChip(
+                                title: option.label,
+                                symbol: nil,
+                                isSelected: (draftPregnancy == true && option.value == "yes")
+                                    || (draftPregnancy == false && option.value == "no")
+                            ) {
+                                let newVal = option.value == "yes"
+                                if draftPregnancy == newVal {
+                                    draftPregnancy = nil
+                                } else {
+                                    draftPregnancy = newVal
+                                }
+                            }
+                        }
+                        .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                    }
+                }
             }
             .formStyle(.grouped)
             .navigationTitle("Elle gir")
@@ -269,6 +331,10 @@ struct HealthSyncView: View {
                         flow.manualBiologicalSex = draftSex
                         flow.manualSleepHours = draftSleep
                         flow.manualWaterGlasses = draftWater
+                        flow.manualSmoking = draftSmoking
+                        flow.manualAlcohol = draftAlcohol
+                        // pregnancy yalnızca female için anlamlı; diğer durumlarda nil yaz
+                        flow.pregnancyAnswer = (draftSex == "female") ? draftPregnancy : nil
                         Haptics.success()
                         showManualSheet = false
                     }
@@ -327,6 +393,10 @@ struct HealthSyncView: View {
         } else {
             draftWater = 8
         }
+
+        draftSmoking = flow.manualSmoking
+        draftAlcohol = flow.manualAlcohol
+        draftPregnancy = flow.pregnancyAnswer
     }
 
     // MARK: - Tarih aralığı
