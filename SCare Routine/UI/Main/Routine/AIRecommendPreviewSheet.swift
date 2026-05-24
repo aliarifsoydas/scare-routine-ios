@@ -37,6 +37,21 @@ struct AIRecommendPreviewSheet: View {
     @State private var isSaving: Bool = false
     @State private var userProducts: [UserProductResponse] = []
 
+    // Spotify-style rotating loading statuses — kullanıcıya AI'ın ne yaptığını
+    // anlatır ve generic spinner hissini yumuşatır.
+    private var loadingStatuses: [String] {
+        [
+            L("Cilt loguna bakıyor..."),
+            L("Ürünleri eşleştiriyor..."),
+            L("Aktif maddeleri analiz ediyor..."),
+            L("Adımları planlıyor..."),
+            L("Son detayları gözden geçiriyor..."),
+        ]
+    }
+
+    @State private var currentStatusIndex: Int = 0
+    @State private var statusTimer: Timer? = nil
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -73,19 +88,35 @@ struct AIRecommendPreviewSheet: View {
     private var loadingView: some View {
         VStack(spacing: 16) {
             Spacer()
-            ProgressView()
-                .scaleEffect(1.4)
-                .tint(Theme.ink)
             Text("\(targetTime.emoji) \(L("AI rutinini hazırlıyor…"))")
                 .font(Theme.Typo.body)
                 .foregroundStyle(Theme.inkSoft)
-            Text(L("Arşivindeki ürünleri inceliyor, profiline en uygun sıralamayı kuruyor."))
-                .font(Theme.Typo.caption)
-                .foregroundStyle(Theme.inkMute)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+            HStack(spacing: 12) {
+                ProgressView()
+                    .tint(Theme.ink)
+                Text(loadingStatuses[currentStatusIndex])
+                    .font(Theme.Typo.body)
+                    .foregroundStyle(Theme.inkSoft)
+                    .transition(.opacity)
+                    .id(currentStatusIndex)  // forces transition animation
+            }
+            .padding(.horizontal, 24)
             Spacer()
             Spacer()
+        }
+        .onAppear {
+            statusTimer?.invalidate()
+            statusTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
+                Task { @MainActor in
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        currentStatusIndex = (currentStatusIndex + 1) % loadingStatuses.count
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            statusTimer?.invalidate()
+            statusTimer = nil
         }
     }
 
@@ -94,6 +125,17 @@ struct AIRecommendPreviewSheet: View {
         ScrollView {
             VStack(spacing: 16) {
                 summaryCard(resp)
+
+                if let cachedHint = cachedHintText(resp) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(cachedHint)
+                            .font(Theme.Typo.caption)
+                    }
+                    .foregroundStyle(Theme.inkMute)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
                 if !resp.routineNotes.isEmpty {
                     notesCard(resp.routineNotes)
@@ -375,6 +417,22 @@ struct AIRecommendPreviewSheet: View {
     }
 
     // MARK: - Helpers
+
+    /// Backend `_meta.cached: true` döndüyse "Son güncelleme: 2 saat önce"
+    /// stilinde subtle bir hint metni üret. `cached: false` veya meta yoksa nil.
+    private func cachedHintText(_ resp: AIRecommendRoutineResponse) -> String? {
+        guard let meta = resp.meta, meta.cached else { return nil }
+        let relative: String
+        if let date = meta.cachedAt {
+            let f = RelativeDateTimeFormatter()
+            f.unitsStyle = .full
+            f.locale = Locale(identifier: appState.locale == "en" ? "en" : "tr")
+            relative = f.localizedString(for: date, relativeTo: Date())
+        } else {
+            relative = "—"
+        }
+        return String(format: L("Son güncelleme: %@"), relative)
+    }
 
     private func scoreColor(_ s: Int) -> Color {
         switch s {

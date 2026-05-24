@@ -46,6 +46,29 @@ struct AIRecommendStep: Decodable, Identifiable, Hashable {
     }
 }
 
+/// Backend response için cache metadata. `cached: true` ise sonuç önceki
+/// bir çağrıdan döndürülmüştür ve `cachedAt` üretildiği zamanı içerir.
+struct AIRecommendRoutineMeta: Decodable {
+    let cached: Bool
+    let cachedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case cached, cachedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.cached = (try? c.decodeIfPresent(Bool.self, forKey: .cached)) ?? false
+        if let raw = try? c.decodeIfPresent(String.self, forKey: .cachedAt) {
+            let iso = ISO8601DateFormatter()
+            iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            self.cachedAt = iso.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
+        } else {
+            self.cachedAt = nil
+        }
+    }
+}
+
 /// `POST /v1/ai/recommend-routine` response payload.
 struct AIRecommendRoutineResponse: Decodable {
     let steps: [AIRecommendStep]
@@ -53,9 +76,13 @@ struct AIRecommendRoutineResponse: Decodable {
     let suitabilityScore: Int
     let missingCategories: [String]
     let warnings: [String]
+    /// Opsiyonel cache metadata — backend response'unda `_meta.cached: true` varsa
+    /// UI "Son güncelleme: 2 saat önce" gibi bir hint gösterebilir.
+    let meta: AIRecommendRoutineMeta?
 
     enum CodingKeys: String, CodingKey {
         case steps, routineNotes, suitabilityScore, missingCategories, warnings
+        case meta = "_meta"
     }
 
     init(from decoder: Decoder) throws {
@@ -65,5 +92,6 @@ struct AIRecommendRoutineResponse: Decodable {
         self.suitabilityScore = (try? c.decodeIfPresent(Int.self, forKey: .suitabilityScore)) ?? 0
         self.missingCategories = (try? c.decodeIfPresent([String].self, forKey: .missingCategories)) ?? []
         self.warnings = (try? c.decodeIfPresent([String].self, forKey: .warnings)) ?? []
+        self.meta = try? c.decodeIfPresent(AIRecommendRoutineMeta.self, forKey: .meta)
     }
 }

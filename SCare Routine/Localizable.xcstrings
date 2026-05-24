@@ -578,6 +578,23 @@
         }
       }
     },
+    "Adımları planlıyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Planning the steps..."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adımları planlıyor..."
+          }
+        }
+      }
+    },
     "Adın" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -783,6 +800,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Active ingredients"
+          }
+        }
+      }
+    },
+    "Aktif maddeleri analiz ediyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analyzing active ingredients..."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktif maddeleri analiz ediyor..."
+          }
+        }
+      }
+    },
+    "Aktif maddeleri değerlendiriyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Evaluating active ingredients..."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktif maddeleri değerlendiriyor..."
           }
         }
       }
@@ -1165,6 +1216,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reviewing your archive and building the best order for your profile."
+          }
+        }
+      }
+    },
+    "Arşivinle eşleştiriyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparing with your archive..."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arşivinle eşleştiriyor..."
           }
         }
       }
@@ -2327,6 +2395,23 @@
         }
       }
     },
+    "Cilt loguna bakıyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reviewing your skin log..."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cilt loguna bakıyor..."
+          }
+        }
+      }
+    },
     "Cilt pikselleri okunamadı. Yüzünü daha yakın getir." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2450,6 +2535,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Skin compatibility"
+          }
+        }
+      }
+    },
+    "Cilt uyumunu hesaplıyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calculating skin compatibility..."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cilt uyumunu hesaplıyor..."
           }
         }
       }
@@ -5912,6 +6014,23 @@
         }
       }
     },
+    "Profilini kontrol ediyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking your profile..."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Profilini kontrol ediyor..."
+          }
+        }
+      }
+    },
     "Profilini tamamla" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7189,6 +7308,40 @@
         }
       }
     },
+    "Son detayları gözden geçiriyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reviewing final details..."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son detayları gözden geçiriyor..."
+          }
+        }
+      }
+    },
+    "Son güncelleme: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last updated: %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son güncelleme: %@"
+          }
+        }
+      }
+    },
     "Son loglar" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7941,6 +8094,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Identifying product..."
+          }
+        }
+      }
+    },
+    "Ürünleri eşleştiriyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Matching your products..."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ürünleri eşleştiriyor..."
           }
         }
       }
