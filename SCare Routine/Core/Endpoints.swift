@@ -22,7 +22,7 @@ enum Endpoint {
     case attachCleanPhoto(id: String)
     case attachBackPhoto(id: String)
     case productByBarcode(String)
-    case searchProducts(query: String)
+    case searchProducts(query: String, topMatch: Bool = false)
     case productDetail(id: String)
     case verifyProduct(id: String)
 
@@ -75,7 +75,13 @@ enum Endpoint {
     case aiProductExplain
     case aiSkinMeta
     case aiRecommendRoutine
+    case aiRecommendWeeklyPlan
     case aiUsage
+
+    // User-accepted weekly plan (persistent — "kabul ettim, kalsın")
+    case meWeeklyPlanGet
+    case meWeeklyPlanAccept
+    case meWeeklyPlanDiscard
 
     // Sistem
     case health
@@ -100,9 +106,10 @@ enum Endpoint {
         case .attachCleanPhoto(let id): return "/products/recognition/\(id)/attach-clean"
         case .attachBackPhoto(let id): return "/products/recognition/\(id)/attach-back"
         case .productByBarcode(let bc): return "/products/by-barcode/\(bc)"
-        case .searchProducts(let q):
+        case .searchProducts(let q, let topMatch):
             let qs = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            return "/products/search?q=\(qs)"
+            let tm = topMatch ? "&top_match=true" : ""
+            return "/products/search?q=\(qs)\(tm)"
         case .productDetail(let id): return "/products/\(id)"
         case .verifyProduct(let id): return "/products/\(id)/verify"
 
@@ -145,7 +152,10 @@ enum Endpoint {
         case .aiProductExplain: return "/ai/product-explain"
         case .aiSkinMeta: return "/ai/skin-meta"
         case .aiRecommendRoutine: return "/ai/recommend-routine"
+        case .aiRecommendWeeklyPlan: return "/ai/recommend-weekly-plan"
         case .aiUsage: return "/ai/usage"
+
+        case .meWeeklyPlanGet, .meWeeklyPlanAccept, .meWeeklyPlanDiscard: return "/me/weekly-plan"
 
         case .health: return "/health"
         case .categories: return "/categories"
@@ -162,7 +172,8 @@ enum Endpoint {
              .addMyProduct, .signUpload, .createRoutine,
              .postLog, .postSkinLog, .postSkinToneEstimate, .createCycle,
              .ackNotification, .registerDevice, .postHealthMetricsBulk,
-             .aiRoutineReview, .aiProductExplain, .aiSkinMeta, .aiRecommendRoutine:
+             .aiRoutineReview, .aiProductExplain, .aiSkinMeta, .aiRecommendRoutine, .aiRecommendWeeklyPlan,
+             .meWeeklyPlanAccept:
             return .post
 
         case .updateProfile, .setRoutineSteps:
@@ -171,7 +182,7 @@ enum Endpoint {
         case .updateMyProduct, .updateRoutine, .updateCycle:
             return .patch
 
-        case .deleteAccount, .deleteMyProduct, .deleteRoutine:
+        case .deleteAccount, .deleteMyProduct, .deleteRoutine, .meWeeklyPlanDiscard:
             return .delete
 
         default:

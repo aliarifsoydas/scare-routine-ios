@@ -73,6 +73,7 @@ struct ProductDetailView: View {
                 detailsSection
                 ingredientsSection
                 preferencesSection
+                wrongRecordSection
                 deleteSection
             }
             .formStyle(.grouped)
@@ -525,6 +526,39 @@ struct ProductDetailView: View {
             Text(L("Tercihler"))
         }
         .listRowBackground(Theme.surface.opacity(0.6))
+    }
+
+    /// Arşivdeki kayıt yanlışsa kullanıcıya "Bu kayıt yanlış mı?" alternatif
+    /// footer'ı. `UserProductResponse`'da `attemptId` yok — bu yüzden klasik
+    /// `WrongMatchSheet` akışı kullanılamaz; kullanıcıyı destructive delete
+    /// section'a yönlendiririz (Sil butonu zaten aşağıda).
+    ///
+    /// Bu footer veri toplamak için sinyal göndermez (attemptId yok); sadece
+    /// kullanıcının yanlış kaydı temizlemesi için subtle bir entry-point.
+    @ViewBuilder
+    private var wrongRecordSection: some View {
+        Section {
+            Button {
+                Haptics.light()
+                showDeleteConfirm = true
+            } label: {
+                HStack(spacing: 6) {
+                    Spacer()
+                    Image(systemName: "exclamationmark.bubble")
+                        .font(.system(size: 12, weight: .regular))
+                    Text(L("Bu kayıt yanlış mı? Sil/Düzelt"))
+                        .font(Theme.Typo.caption)
+                        .underline()
+                    Spacer()
+                }
+                .foregroundStyle(Theme.inkSoft)
+                .padding(.vertical, 4)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L("Yanlış ürün bildir"))
+        }
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
     }
 
     private var deleteSection: some View {

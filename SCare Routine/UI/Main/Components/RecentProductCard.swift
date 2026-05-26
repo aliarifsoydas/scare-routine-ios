@@ -12,6 +12,9 @@ struct RecentProductCard: View {
             Haptics.light()
             onTap()
         } label: {
+            // Outer VStack'e de width: 96 zorla — yoksa long product name'in
+            // intrinsic width'i kartı genişletip parent yatay scroll'a sızar
+            // ("ana sayfa sağa-sola oynama" davranışının asıl kaynağı).
             VStack(alignment: .leading, spacing: 8) {
                 AsyncRemoteImage(url: item.photoUrl.flatMap(URL.init(string:)))
                     .frame(width: 96, height: 96)
@@ -28,15 +31,19 @@ struct RecentProductCard: View {
                             .foregroundStyle(Theme.inkSoft)
                             .lineLimit(1)
                     }
+                    // .fixedSize(horizontal: false, vertical: true) KALDIRILDI:
+                    // bu modifier Text'in yatay boyutunu intrinsic width'e zorluyor
+                    // ve parent .frame(width: 96) constraint'ini bypass ediyor.
+                    // lineLimit(2) + truncation zaten 96pt frame içinde doğru çalışır.
                     Text(displayTitle)
                         .font(Theme.Typo.caption.weight(.medium))
                         .foregroundStyle(Theme.ink)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(width: 96, alignment: .leading)
             }
+            .frame(width: 96)
         }
         .buttonStyle(PressedScaleButtonStyle())
         .accessibilityLabel(displayTitle)

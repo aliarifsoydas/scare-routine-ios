@@ -74,11 +74,13 @@ final class AppState {
             let me = try await withTimeout(seconds: 5) {
                 try await UserService.shared.fetchMe()
             }
-            // Backend authoritative — /v1/me başarılı döndüyse profile durumunu
-            // local state'e aynen yansıt. Eğer backend profile null/incomplete
-            // ise (ör. onboarding submit fail edip yarıda kalmışsa) local
-            // profileCompleted'i de false yap → onboarding'e tekrar gönder.
-            self.profileCompleted = (me.profile?.isComplete == true)
+            // Onboarding bir kez bittiyse (UserDefaults true) BİR DAHA geri çekme.
+            // Backend profile null / birth_date eksik bile olsa kullanıcı zaten
+            // ana ekrana geçti → sırf bir alan null diye onboarding'e atmayalım.
+            // Sadece henüz tamamlanmadıysa backend'den onaylanırsa true yap.
+            if !self.profileCompleted, me.profile?.isComplete == true {
+                self.profileCompleted = true
+            }
 
             // Sistem dili (iOS Settings) ile backend user.locale farklıysa
             // backend'i güncelle. AI prompt'ları user.locale'e göre dil seçer
@@ -189,8 +191,11 @@ final class AppState {
             let me = try await UserService.shared.fetchMe()
             self.currentUser = me.user
             self.currentProfile = me.profile
-            // Backend authoritative — boşsa local'i de sıfırla (bkz. bootstrap notu).
-            self.profileCompleted = (me.profile?.isComplete == true)
+            // Onboarding bir kez bittiyse asla geri ÇEKME (bkz. bootstrap notu).
+            // Backend profile alanı eksik dönse bile kullanıcı tekrar onboarding görmesin.
+            if !self.profileCompleted, me.profile?.isComplete == true {
+                self.profileCompleted = true
+            }
         } catch {
             print("[AppState] refreshMe failed: \(error.localizedDescription)")
         }

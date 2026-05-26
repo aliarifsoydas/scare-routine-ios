@@ -45,12 +45,12 @@
     "/100" : {
 
     },
-    "%@ (%lld)" : {
+    "%@ · %lld" : {
       "localizations" : {
         "tr" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ (%2$lld)"
+            "value" : "%1$@ · %2$lld"
           }
         }
       }
@@ -338,6 +338,9 @@
         }
       }
     },
+    "+" : {
+
+    },
     "+ %@" : {
       "localizations" : {
         "en" : {
@@ -348,7 +351,19 @@
         }
       }
     },
+    "+%@ eklersen %lld%%'e çıkar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adding %1$@ takes it to %2$lld%%"
+          }
+        }
+      }
+    },
     "+%lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -357,6 +372,9 @@
           }
         }
       }
+    },
+    "✨" : {
+
     },
     "✨ AI ile öner" : {
       "extractionState" : "manual",
@@ -379,6 +397,9 @@
           }
         }
       }
+    },
+    "🌙" : {
+
     },
     "1 — Çok açık" : {
       "extractionState" : "manual",
@@ -534,6 +555,17 @@
         }
       }
     },
+    "adım" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "steps"
+          }
+        }
+      }
+    },
     "Adım" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -574,6 +606,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Couldn't add step"
+          }
+        }
+      }
+    },
+    "Adımlar sıralanıyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordering steps..."
           }
         }
       }
@@ -650,6 +693,17 @@
         }
       }
     },
+    "AHA" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AHA"
+          }
+        }
+      }
+    },
     "AI + web" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -679,6 +733,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Our recommendation engine that analyzes your profile data for AI skin suggestions is on the way."
+          }
+        }
+      }
+    },
+    "AI cilt tipine ve ürünlerine göre haftalık ritmi kurdu." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI set up the weekly rhythm based on your skin type and products."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI cilt tipine ve ürünlerine göre haftalık ritmi kurdu."
           }
         }
       }
@@ -723,6 +794,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "AI guess"
+          }
+        }
+      }
+    },
+    "AI yerine kendi rutinim" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My own routine instead of AI"
           }
         }
       }
@@ -793,6 +875,17 @@
         }
       }
     },
+    "Aktif madde rotasyonu hesaplanıyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calculating active rotation..."
+          }
+        }
+      }
+    },
     "Aktif maddeler" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -834,6 +927,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aktif maddeleri değerlendiriyor..."
+          }
+        }
+      }
+    },
+    "Aktif rotasyon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Active rotation"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktif rotasyon"
           }
         }
       }
@@ -1209,6 +1319,17 @@
         }
       }
     },
+    "Arşivindeki şu ürünlerle çakışıyor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clashes with these in your archive"
+          }
+        }
+      }
+    },
     "Arşivindeki ürünleri inceliyor, profiline en uygun sıralamayı kuruyor." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1216,6 +1337,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reviewing your archive and building the best order for your profile."
+          }
+        }
+      }
+    },
+    "Arşivinden ürün ekleyerek başla." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start by adding products from your archive."
+          }
+        }
+      }
+    },
+    "Arşivine ürün ekleyince AI bugünün rutinini hazırlar." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add products to your archive and AI will craft today's routine."
+          }
+        }
+      }
+    },
+    "Arşivinle çakışma" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clashes with archive"
           }
         }
       }
@@ -1233,17 +1387,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arşivinle eşleştiriyor..."
-          }
-        }
-      }
-    },
-    "Arşivinden ürün ekleyerek başla." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start by adding products from your archive."
           }
         }
       }
@@ -1277,6 +1420,91 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Skipped"
+          }
+        }
+      }
+    },
+    "autoCapture.hint.tooMuchMotion" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera shake"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kamera çok titriyor"
+          }
+        }
+      }
+    },
+    "autoCapture.status.capturing" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturing..."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Çekiliyor..."
+          }
+        }
+      }
+    },
+    "autoCapture.status.readyToCapture" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready!"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hazır!"
+          }
+        }
+      }
+    },
+    "autoCapture.status.searching" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Position product in frame"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ürünü kareye yerleştirin"
+          }
+        }
+      }
+    },
+    "autoCapture.status.stabilizing" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold steady..."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sabit tutun..."
           }
         }
       }
@@ -1611,6 +1839,17 @@
         }
       }
     },
+    "BHA" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "BHA"
+          }
+        }
+      }
+    },
     "BHA + ceramide" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1864,6 +2103,39 @@
         }
       }
     },
+    "Bu doğru" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirm"
+          }
+        }
+      }
+    },
+    "Bu doğru ürün" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is the right product"
+          }
+        }
+      }
+    },
+    "Bu doğru ürün değil mi?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wrong product?"
+          }
+        }
+      }
+    },
     "Bu doğru, arşive ekle" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1882,6 +2154,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No active steps for this day"
+          }
+        }
+      }
+    },
+    "Bu hafta" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This week"
           }
         }
       }
@@ -1930,6 +2213,17 @@
         }
       }
     },
+    "Bu kayıt yanlış mı? Sil/Düzelt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Is this record wrong? Delete/Fix"
+          }
+        }
+      }
+    },
     "Bu rutini oluştur" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1952,6 +2246,17 @@
         }
       }
     },
+    "Bu slot için adım yok" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No steps for this slot"
+          }
+        }
+      }
+    },
     "Bu slot için rutin yok" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1970,6 +2275,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Are you sure you want to delete this product from your archive?"
+          }
+        }
+      }
+    },
+    "Bu ürünü doğru tanıdığımdan tam emin değilim" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I'm not fully sure I recognized this product correctly"
+          }
+        }
+      }
+    },
+    "Bu ürünü tanımakta zorlandım" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I had trouble recognizing this product"
+          }
+        }
+      }
+    },
+    "Bugün" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today"
           }
         }
       }
@@ -2018,6 +2356,28 @@
         }
       }
     },
+    "Bugün için henüz plan yok" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No plan for today yet"
+          }
+        }
+      }
+    },
+    "Bugün nemlendirici yeterli" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moisturizer is enough today"
+          }
+        }
+      }
+    },
     "Bugün retinol kullandım, parfümlü bir ürün denedim…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2058,6 +2418,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Update today"
+          }
+        }
+      }
+    },
+    "Bugünün ritüali derleniyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Composing today's ritual..."
           }
         }
       }
@@ -2369,6 +2740,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Skincare"
+          }
+        }
+      }
+    },
+    "Cilt bariyerin için bugün sadece nemlendirme önerilir" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only moisturizing is recommended today to support your skin barrier"
           }
         }
       }
@@ -2826,6 +3208,17 @@
         }
       }
     },
+    "Detayı gör" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View details"
+          }
+        }
+      }
+    },
     "Detaylar" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2866,6 +3259,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "By continuing, you agree to the Privacy Policy and Terms of Use."
+          }
+        }
+      }
+    },
+    "Devam etmeden önce, gösterdiğim ürünün doğru olduğunu onayla." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Before continuing, confirm that the product I'm showing is correct."
           }
         }
       }
@@ -2947,6 +3351,50 @@
         }
       }
     },
+    "dinlen" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "rest"
+          }
+        }
+      }
+    },
+    "Dinlen" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rest"
+          }
+        }
+      }
+    },
+    "Dinlenme günü" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rest day"
+          }
+        }
+      }
+    },
+    "Dinlenme günü — sadece nemlendirme önerilir" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rest day — only moisturizing is recommended"
+          }
+        }
+      }
+    },
     "Doğal" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2965,6 +3413,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Is this the right product?"
+          }
+        }
+      }
+    },
+    "Doğru ürünü seç" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick the correct product"
           }
         }
       }
@@ -3057,6 +3516,17 @@
         }
       }
     },
+    "Düşük" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Low"
+          }
+        }
+      }
+    },
     "Düşük güven — aşağıdan manuel seçmen önerilir." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3141,6 +3611,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Added"
+          }
+        }
+      }
+    },
+    "Eksikler var" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gaps present"
           }
         }
       }
@@ -3641,6 +4122,17 @@
         }
       }
     },
+    "Geliştirilebilir" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Improvable"
+          }
+        }
+      }
+    },
     "gender_female" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4025,6 +4517,78 @@
         }
       }
     },
+    "Haftalık not" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weekly note"
+          }
+        }
+      }
+    },
+    "Haftalık plan" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weekly plan"
+          }
+        }
+      }
+    },
+    "Haftalık plan alınamadı" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't load the weekly plan"
+          }
+        }
+      }
+    },
+    "Haftalık planını oluşturmak için ana sayfaya dön" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go back to the home screen to create your weekly plan"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haftalık planını oluşturmak için ana sayfaya dön"
+          }
+        }
+      }
+    },
+    "Haftalık ritim kuruluyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setting your weekly rhythm..."
+          }
+        }
+      }
+    },
+    "Haftalık uyarılar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weekly warnings"
+          }
+        }
+      }
+    },
     "Hamilelik" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4109,6 +4673,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No"
+          }
+        }
+      }
+    },
+    "Hazırlık seviyesi" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Readiness level"
           }
         }
       }
@@ -4263,6 +4838,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Never"
+          }
+        }
+      }
+    },
+    "Hiçbiri uymuyor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None of these match"
           }
         }
       }
@@ -4443,6 +5029,17 @@
         }
       }
     },
+    "İçindekiler özeti" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingredients summary"
+          }
+        }
+      }
+    },
     "İki onay verman yeterli." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4450,6 +5047,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Just two quick confirmations."
+          }
+        }
+      }
+    },
+    "İlk haftalık planın hazır" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your first weekly plan is ready"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İlk haftalık planın hazır"
           }
         }
       }
@@ -4724,6 +5338,23 @@
         }
       }
     },
+    "Kabul et ve başla" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accept and start"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kabul et ve başla"
+          }
+        }
+      }
+    },
     "Kaçınılması gereken" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4940,6 +5571,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kazakhstan"
+          }
+        }
+      }
+    },
+    "Kendi rutinin AI planından farklı görünüyor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your own routine looks different from the AI plan"
           }
         }
       }
@@ -5196,6 +5838,17 @@
         }
       }
     },
+    "Listede yok — manuel ekle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not on the list — add manually"
+          }
+        }
+      }
+    },
     "Makyaj" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5225,6 +5878,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Manual"
+          }
+        }
+      }
+    },
+    "Manuel ara" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search manually"
           }
         }
       }
@@ -5494,6 +6158,17 @@
         }
       }
     },
+    "Nia" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nia"
+          }
+        }
+      }
+    },
     "Niacinamide, BHA" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5512,6 +6187,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "I'll suggest niacinamide, salicylic acid (BHA), and oil-free formulas."
+          }
+        }
+      }
+    },
+    "Niasinamid" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niacinamide"
           }
         }
       }
@@ -5639,6 +6325,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Front side captured"
+          }
+        }
+      }
+    },
+    "Önce haftalık planını oluştur" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create your weekly plan first"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Önce haftalık planını oluştur"
           }
         }
       }
@@ -5786,6 +6489,28 @@
         }
       }
     },
+    "Pep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pep"
+          }
+        }
+      }
+    },
+    "Peptit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peptide"
+          }
+        }
+      }
+    },
     "Per" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5803,6 +6528,106 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "pH"
+          }
+        }
+      }
+    },
+    "Plan güncellendi" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan updated"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan güncellendi"
+          }
+        }
+      }
+    },
+    "Plan hazır" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan ready"
+          }
+        }
+      }
+    },
+    "Plan oluşturmak için yeterli ürün yok" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not enough products to build a plan"
+          }
+        }
+      }
+    },
+    "Plan onaylandı" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan accepted"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan onaylandı"
+          }
+        }
+      }
+    },
+    "Planı geliştirebilecek eksikler" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gaps that could improve the plan"
+          }
+        }
+      }
+    },
+    "Planı geliştirmek için ürün ekle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add products to improve your plan"
+          }
+        }
+      }
+    },
+    "Planın %lld%% hazır" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your plan is %lld%% ready"
+          }
+        }
+      }
+    },
+    "Planın hazır" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your plan is ready"
           }
         }
       }
@@ -6116,6 +6941,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hatırlatma"
+          }
+        }
+      }
+    },
+    "Ret" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ret"
+          }
+        }
+      }
+    },
+    "Retinol" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retinol"
+          }
+        }
+      }
+    },
+    "Retinol ve asit günleri ayrılıyor..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Separating retinol and acid days..."
           }
         }
       }
@@ -7375,6 +8233,17 @@
         }
       }
     },
+    "Sonuç bulunamadı" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No results"
+          }
+        }
+      }
+    },
     "Sonuca geri dön" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7568,6 +8437,28 @@
         }
       }
     },
+    "Tamam, kapat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK, close"
+          }
+        }
+      }
+    },
+    "Tanıdığım ürün yanlışsa, hangisini taradığını söyle — modeli geliştirmemize yardım edersin." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If I got this wrong, tell me which you actually scanned — helps us improve."
+          }
+        }
+      }
+    },
     "Tanıma için yeterli veri yok." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7623,6 +8514,17 @@
         }
       }
     },
+    "Tekrar fotoğraf çek" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retake photo"
+          }
+        }
+      }
+    },
     "Tekrar tara" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7634,6 +8536,23 @@
         }
       }
     },
+    "Tekrar üret" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regenerate"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tekrar üret"
+          }
+        }
+      }
+    },
     "Tercihler" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7641,6 +8560,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Preferences"
+          }
+        }
+      }
+    },
+    "Teşekkürler! Bu kaydı düzelttim." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thanks! I've recorded the correction."
           }
         }
       }
@@ -7905,6 +8835,28 @@
         }
       }
     },
+    "Tüm hafta" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full week"
+          }
+        }
+      }
+    },
+    "Tüm rutinlerim" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All my routines"
+          }
+        }
+      }
+    },
     "Tüm sorular opsiyonel — boş bırakabilir, sonra profilden değiştirebilirsin." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7912,6 +8864,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Everything is optional — leave blank and update later from your profile."
+          }
+        }
+      }
+    },
+    "Tüm temel kategoriler tam" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All essential categories covered"
           }
         }
       }
@@ -8026,6 +8989,17 @@
         }
       }
     },
+    "Ürün #%lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Product #%lld"
+          }
+        }
+      }
+    },
     "Ürün adı *" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8044,6 +9018,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Search products"
+          }
+        }
+      }
+    },
+    "Ürün ara..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search product..."
           }
         }
       }
@@ -8236,6 +9221,17 @@
         }
       }
     },
+    "Uyum: %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fit: %lld"
+          }
+        }
+      }
+    },
     "Uzun süreli" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8286,6 +9282,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "I agree to store my data"
+          }
+        }
+      }
+    },
+    "Vit C" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vit C"
           }
         }
       }
@@ -8563,6 +9570,17 @@
         }
       }
     },
+    "Yanlış ürün bildir" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report wrong product"
+          }
+        }
+      }
+    },
     "yanma" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8673,6 +9691,57 @@
         }
       }
     },
+    "Yeni bir haftalık plan önerisi hazır." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A new weekly plan suggestion is ready."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeni bir haftalık plan önerisi hazır."
+          }
+        }
+      }
+    },
+    "Yeni öneri hazır" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New suggestion is ready"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeni öneri hazır"
+          }
+        }
+      }
+    },
+    "Yeni plan üretiliyor…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generating a new plan…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeni plan üretiliyor…"
+          }
+        }
+      }
+    },
     "Yeni Rutin" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8768,6 +9837,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Loading…"
+          }
+        }
+      }
+    },
+    "Yüksek" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "High"
           }
         }
       }

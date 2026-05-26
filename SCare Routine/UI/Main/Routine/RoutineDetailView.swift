@@ -5,14 +5,17 @@ import SwiftUI
 /// Backend `/v1/me/routines/:id` → { routine, steps }
 struct RoutineDetailView: View {
     let routineId: String
-    let initialRoutine: RoutineResponse
+    let initialRoutine: RoutineResponse?
     let autoFocusAddStep: Bool
 
     var onDeleted: ((String) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var routine: RoutineResponse
+    /// `initialRoutine` nil ile push edildiğinde (örn. HomeView weekly plan
+    /// üzerinden routes) bu state nil kalır; `loadDetail()` sunucudan çekip
+    /// doldurur. Bu süre boyunca header bir "Yükleniyor…" placeholder gösterir.
+    @State private var routine: RoutineResponse?
     @State private var steps: [RoutineStepResponse] = []
     @State private var userProducts: [UserProductResponse] = []
     @State private var completedSteps: Set<String> = []
@@ -24,7 +27,7 @@ struct RoutineDetailView: View {
 
     init(
         routineId: String,
-        initialRoutine: RoutineResponse,
+        initialRoutine: RoutineResponse? = nil,
         autoFocusAddStep: Bool = false,
         onDeleted: ((String) -> Void)? = nil
     ) {
@@ -56,7 +59,7 @@ struct RoutineDetailView: View {
                 .padding(.bottom, 32)
             }
         }
-        .navigationTitle(routine.name)
+        .navigationTitle(routine?.name ?? L("Rutin"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -94,12 +97,12 @@ struct RoutineDetailView: View {
                 Circle()
                     .fill(Theme.surface)
                     .frame(width: 56, height: 56)
-                Text(routine.emoji ?? "✨")
+                Text(routine?.emoji ?? "✨")
                     .font(.system(size: 28))
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(routine.name)
+                Text(routine?.name ?? L("Yükleniyor..."))
                     .font(Theme.Typo.headline)
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1)
@@ -132,12 +135,13 @@ struct RoutineDetailView: View {
     }
 
     private var headerSubtitle: String? {
+        guard let r = routine else { return nil }
         var parts: [String] = []
-        if let t = routine.schedule?.time { parts.append(t) }
-        if let c = routine.categoryId {
+        if let t = r.schedule?.time { parts.append(t) }
+        if let c = r.categoryId {
             parts.append(localizedCategory(c))
         }
-        if routine.reminder { parts.append(L("reminder_label")) }
+        if r.reminder { parts.append(L("reminder_label")) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 

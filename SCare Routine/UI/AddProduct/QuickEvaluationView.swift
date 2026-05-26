@@ -25,7 +25,7 @@ struct QuickEvaluationView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            // Fit score gauge + verdict
+            // Fit score gauge + verdict + (yan tarafa) çakışma chip'i
             HStack(spacing: 18) {
                 FitScoreGauge(score: result.fitScore)
                 VStack(alignment: .leading, spacing: 6) {
@@ -35,6 +35,10 @@ struct QuickEvaluationView: View {
                     Text(verdictSubtitle)
                         .font(Theme.Typo.body)
                         .foregroundStyle(Theme.inkSoft)
+                    // Çakışma chip — arşivde uyumsuz ürün varsa hemen fark edilsin.
+                    if !result.conflictsWith.isEmpty {
+                        conflictChip
+                    }
                 }
                 Spacer()
             }
@@ -49,11 +53,36 @@ struct QuickEvaluationView: View {
                 ProConsList(pros: result.pros, cons: result.cons)
             }
 
+            // Spesifik arşiv-çakışmaları — generic "rutininle uyumsuz olabilir"
+            // mesajının yerine ürün adı + gerekçe ile detaylı kart.
+            // Kullanıcı önce skor/pros/cons görsün, sonra spesifik çakışmalar.
+            if !result.conflictsWith.isEmpty {
+                ConflictsCard(conflicts: result.conflictsWith)
+            }
+
             // Reasons (bullet list — açıklama)
             if !result.reasons.isEmpty {
                 reasonsCard
             }
         }
+    }
+
+    /// Verdict satırının altındaki küçük "çakışma var" rozeti — sadece vurgu için.
+    /// Detay aşağıdaki `ConflictsCard`'ta gösterilir.
+    private var conflictChip: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 9, weight: .semibold))
+            Text(L("Arşivinle çakışma"))
+                .font(.system(size: 11, weight: .semibold))
+        }
+        .foregroundStyle(Theme.alert)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Theme.alert.opacity(0.12))
+        )
     }
 
     // MARK: - Reasons card

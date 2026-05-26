@@ -67,12 +67,18 @@ struct HomeProfileHeroCard: View {
                         .font(Theme.Typo.headline)
                         .foregroundStyle(Theme.ink)
 
+                    // .fixedSize(horizontal: false, vertical: true) KALDIRILDI:
+                    // bu modifier Text'in yatay boyutunu intrinsic width'e zorluyor
+                    // ve parent HStack/Card constraint'ini bypass ediyor → long copy
+                    // (örn. "Cilt tipi: Yağlı · Ton: Koyu · Yaş: 28") tüm sayfa
+                    // genişliğini zorlayıp parent ScrollView'da yatay sürüklenme
+                    // yaratıyordu ("ana sayfa sağa-sola oynama" davranışı).
+                    // lineLimit(2) + truncation parent width'e sığar.
                     Text(summaryLine)
                         .font(Theme.Typo.caption)
                         .foregroundStyle(Theme.inkSoft)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer(minLength: 8)

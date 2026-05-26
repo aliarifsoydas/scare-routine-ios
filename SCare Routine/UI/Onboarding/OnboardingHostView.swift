@@ -55,8 +55,10 @@ public struct OnboardingHostView: View {
                     PreparingPlanView {
                         // Animation %100'e ulaşıp tamamlandı → şimdi profileCompleted
                         // set edilir, ContentView main'e geçer.
+                        // NOT: bootstrap() çağrılmaz — finalizeOnboarding zaten state'i
+                        // ayarlıyor. Bootstrap /v1/me'den isComplete=false dönerse race
+                        // koşulu yaratıp kullanıcıyı tekrar onboarding'e atıyordu.
                         appState.finalizeOnboarding()
-                        Task { await appState.bootstrap() }
                     }
                     .transition(.opacity.combined(with: .scale(scale: 1.02)))
                 }

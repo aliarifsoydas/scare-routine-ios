@@ -82,8 +82,9 @@ final class ProductScanService: @unchecked Sendable {
         photoKeyClean: String? = nil,
         ocrBlocksBack: [String]? = nil,
         featurePrint: [Float]? = nil,
-        featurePrintClean: [Float]? = nil
-    ) async throws -> ProductRecognizeResponse {
+        featurePrintClean: [Float]? = nil,
+        captureDebug: AutoCaptureDebug? = nil
+    ) async throws -> ProductIdentifyResponse {
         let body = ProductRecognizeRequest(
             barcode: barcode,
             ocrText: ocrText,
@@ -96,7 +97,8 @@ final class ProductScanService: @unchecked Sendable {
             photoKeyClean: photoKeyClean,
             ocrBlocksBack: ocrBlocksBack,
             featurePrint: featurePrint,
-            featurePrintClean: featurePrintClean
+            featurePrintClean: featurePrintClean,
+            captureDebug: captureDebug.map { CaptureDebugPayload(from: $0) }
         )
         return try await api.request(.recognizeProduct, body: body)
     }
@@ -309,15 +311,54 @@ final class ProductScanService: @unchecked Sendable {
         }
     }
 
-    /// `/v1/products/by-barcode/:bc` — barkod + INCI listesi.
-    /// Backend ürünü bulamazsa 404 dönebilir; bu durumda `(nil, nil)` döndürürüz.
-    func lookupByBarcode(_ barcode: String) async throws -> (product: RecognizedProduct?, ingredients: [RecognizedIngredient]?) {
+    /// `/v1/products/by-barcode/:bc` — barkod + INCI listesi + (opsiyonel) VLM cross-check.
+    ///
+    /// `photoKey` verilirse backend ürünü bulduğunda VLM ile foto'yu çapraz kontrol
+    /// eder ve `verification` alanı dolu döner. Bu sayede yanlış barcode hit'leri
+    /// (örn. paylaşımlı UPC) tespit edilir.
+    ///
+    /// Backend bulamazsa 404 → boş `ProductIdentifyResponse` döner (product=nil).
+    ///
+    /// **NOT**: Aynı isimle tuple-returning overload (backward compat) altta tanımlı.
+    /// Yeni callsite'lar `photoKey:` label'ı ile veya context'le `ProductIdentifyResponse`
+    /// dönüşünü kullanır. Eski destructure (`let (p, i) = ...`) tuple overload'a düşer.
+    func lookupByBarcode(_ barcode: String, photoKey: String? = nil) async throws -> ProductIdentifyResponse {
         do {
-            let resp: ProductByBarcodeResponse = try await api.request(.productByBarcode(barcode))
-            return (resp.product, resp.ingredients)
+            if let photoKey {
+                struct Body: Encodable { let photoKey: String }
+                return try await api.request(.productByBarcode(barcode), body: Body(photoKey: photoKey))
+            } else {
+                return try await api.request(.productByBarcode(barcode))
+            }
         } catch APIError.notFound {
-            return (nil, nil)
+            return ProductIdentifyResponse(
+                product: nil,
+                ingredients: nil,
+                confidence: "low",
+                source: "barcode_explicit"
+            )
         }
+    }
+
+    /// Backward-compat tuple overload — Agent C eski AddProductFlowView callsite'ını
+    /// migrate edene kadar `let (p, ings) = ... lookupByBarcode(bc)` destructure'u
+    /// çalışsın diye duruyor. Internal'da yeni `ProductIdentifyResponse` decode'unu
+    /// kullanır, sadece dönüş şekli tuple. Swift overload resolution: tuple destructure
+    /// context'i bu signature'a yönlendirir; yeni callsite'lar tek değer/`photoKey:`
+    /// kullanarak unified overload'a düşer.
+    @available(*, deprecated, message: "Use lookupByBarcode(_:photoKey:) returning ProductIdentifyResponse")
+    func lookupByBarcode(_ barcode: String) async throws -> (product: RecognizedProduct?, ingredients: [RecognizedIngredient]?) {
+        let resp = try await lookupByBarcode(barcode, photoKey: nil)
+        return (resp.product, resp.ingredients)
+    }
+
+    /// `/v1/products/search?q=...&top_match=true` — manuel arama, opsiyonel top-match.
+    ///
+    /// `topMatch=true` verildiğinde backend en iyi adayı tam recognize formatında
+    /// (`ProductIdentifyResponse`) embed eder; UI bunu "şu mu?" prompt'u için kullanır.
+    /// Liste her durumda `products` field'ında gelir.
+    func search(query: String, topMatch: Bool = false) async throws -> ProductSearchResponse {
+        return try await api.request(.searchProducts(query: query, topMatch: topMatch))
     }
 
     /// `/v1/me/products` POST — kullanıcı arşivine ekle.
@@ -373,9 +414,17 @@ final class ProductScanService: @unchecked Sendable {
     /// `/v1/uploads/sign` ile presigned PUT URL alır, JPEG'i R2'ye yükler.
     /// Hata: iki kez retry'a kadar geri sarar — `ScanError.uploadFailed` ile çıkar.
     func uploadImage(_ image: UIImage, kind: String = "product_photo") async throws -> UploadedImage {
-        // Recognition için 1500px yeterli (Apple FP zaten center-crop yapıyor).
-        // 12MP foto → 1500px + JPEG 0.65 = ~150KB (önceki ~3MB).
-        let resized = downscale(image, maxDimension: 1500)
+        // VLM verification + R2 storage için: 1:1 crop + 1024 downscale.
+        // - 1:1 crop → ürün merkezde, kenardaki background/diğer ürünler temizlenir
+        //   (Apple FP zaten center-crop yapıyor ama R2'deki foto VLM'e de gidiyor,
+        //   explicit crop daha güvenli)
+        // - 1024×1024 → VLM image token ~1500, latency ~2.5s, OCR güvenli (768 OCR
+        //   yazılarını bozuyordu, 1024 net kalır)
+        // - JPEG 0.65 → ~80KB upload, mobil network'te <500ms upload
+        // iOS-local OCR pipeline (downscaleForProcessing 1500 default) bu değişimden
+        // etkilenmez — sadece R2'ye giden foto küçülür.
+        let cropped = centerSquareCrop(image)
+        let resized = downscale(cropped, maxDimension: 1024)
         guard let data = resized.jpegData(compressionQuality: 0.65) else {
             throw ScanError.imageEncodingFailed
         }

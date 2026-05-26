@@ -25,7 +25,8 @@ struct ProductReviewView: View {
     @State private var rating: Int = 0
     @State private var openedToday: Bool = false
 
-    @State private var inciExpanded: Bool = false
+    // `inciExpanded` artık gerek yok — INCI özet `ProductIdentificationResultView`
+    // içinde inline gösteriliyor (disclosure değil, kompakt kart).
     @State private var advancedExpanded: Bool = false
 
     @State private var isSubmitting = false
@@ -39,6 +40,12 @@ struct ProductReviewView: View {
     /// kartını göstermek için kullanılır; ikinci çağrıda eski sonuç ekranda
     /// kalır, üzerine fade yapılabilir.
     @State private var isEvaluating: Bool = false
+
+    /// Wrong-match düzeltme sheet'i. `recognized?.attemptId` yoksa footer hiç
+    /// render edilmez; bu state ancak attempt ID varken `true` olabilir.
+    @State private var showWrongMatchSheet: Bool = false
+    /// Aynı taramada birden fazla düzeltme yollamasın diye flag.
+    @State private var wrongMatchSubmitted: Bool = false
 
     enum Mode { case review, manual }
 
@@ -70,13 +77,14 @@ struct ProductReviewView: View {
                 header
 
                 if mode == .review {
-                    if let product = primaryProduct {
-                        productCard(product)
-                        // Quick Scan tarzı AI analiz — fit_score + verdict + pros/cons + duplicate.
-                        // Backend yanıtı boyunca loading kartı, hata ise sessizce atlanır
-                        // (arşive ekleme akışını bloklamamak için).
-                        quickEvaluationSection
-                        // Review insights + ingredient warnings
+                    if primaryProduct != nil {
+                        // Tek render kaynağı — header + verification banner + fit gauge
+                        // + duplicate + conflicts + pros/cons + INCI özeti. CTA'sı yok
+                        // (host'un kendi submit footer'ı var); wrong-match callback'i
+                        // host state'iyle bağlı (sheet host'ta).
+                        unifiedResultSection
+                        // Review insights + ingredient warnings — bu sayfaya özel,
+                        // unified view'a girmedi (sadece ProductReviewView'da relevant).
                         if let s = recognized?.reviewSummary, s.count > 0 {
                             reviewSummaryPanel(s)
                         }
@@ -131,6 +139,59 @@ struct ProductReviewView: View {
         .task(id: evaluationProductID) {
             await runQuickEvaluation()
         }
+        .sheet(isPresented: $showWrongMatchSheet) {
+            if let attemptId = recognized?.attemptId, !attemptId.isEmpty {
+                WrongMatchSheet(
+                    attemptId: attemptId,
+                    onCorrected: { _ in
+                        // Düzeltme gönderildi — footer'ı bir daha gösterme. Bu akış
+                        // arşive eklemeyi engellemiyor; kullanıcı isterse hâlâ
+                        // mevcut review ekranından devam edebilir.
+                        wrongMatchSubmitted = true
+                    },
+                    onManualEntryRequested: {
+                        // Kullanıcı manuel ekleme istedi → mode'u .manual'a çevir
+                        // ve formu seed et.
+                        mode = .manual
+                        seedFormFromRecognized()
+                    }
+                )
+            }
+        }
+    }
+
+    /// Quick Scan ve Add Product akışlarının paylaşılan tanıma-sonucu UI'ı.
+    /// Embedded mode → outer ScrollView ve bottom action bar olmadan sadece
+    /// content stack döner; host kendi footerButtons + safeAreaInset'ini kullanır.
+    /// `onWrongMatch` callback'i sadece `attemptId` varken ve kullanıcı henüz
+    /// düzeltme yollamamışken bağlanır — footer aksi halde gizlenir.
+    @ViewBuilder
+    private var unifiedResultSection: some View {
+        if let recognized {
+            ProductIdentificationResultView(
+                mode: .reviewAndAdd,
+                identifyResult: recognized,
+                evaluationResult: quickEvaluation,
+                isEvaluating: isEvaluating,
+                capturedImage: capturedImage,
+                photoUrl: photoUrl,
+                onClose: nil,                   // reviewAndAdd preview CTA'sı yok
+                onAddToArchive: nil,            // host'un submit button'ı var
+                onWrongMatch: wrongMatchCallback,
+                onManualEntry: nil,
+                isEmbedded: true
+            )
+        }
+    }
+
+    /// Wrong-match callback — sadece `attemptId` varken ve düzeltme yollanmadıysa
+    /// non-nil döner. `nil` ise unified view footer'ı render etmez.
+    private var wrongMatchCallback: (() -> Void)? {
+        guard let attemptId = recognized?.attemptId, !attemptId.isEmpty else {
+            return nil
+        }
+        guard !wrongMatchSubmitted else { return nil }
+        return { showWrongMatchSheet = true }
     }
 
     /// `.task(id:)` için trigger — review modunda primary product ID'si.
@@ -171,42 +232,9 @@ struct ProductReviewView: View {
         }
     }
 
-    // MARK: - Quick Evaluation section (inline AI Analiz)
-
-    /// Ürün kartının altında gösterilen AI değerlendirme bölümü.
-    /// - Çağrı sürüyor + eski sonuç yok → ince loading kartı
-    /// - Sonuç var → `QuickEvaluationView` `.reviewing` context'inde
-    /// - Hata + sonuç yok → hiçbir şey gösterme (silent fail)
-    @ViewBuilder
-    private var quickEvaluationSection: some View {
-        if let eval = quickEvaluation {
-            QuickEvaluationView(result: eval, context: .reviewing)
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
-                        .fill(Theme.surface)
-                )
-        } else if isEvaluating {
-            HStack(spacing: 12) {
-                ProgressView().tint(Theme.ink)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L("Senin için değerlendiriliyor"))
-                        .font(Theme.Typo.body.weight(.medium))
-                        .foregroundStyle(Theme.ink)
-                    Text(L("Cilt profilin ve arşivin karşılaştırılıyor"))
-                        .font(Theme.Typo.caption)
-                        .foregroundStyle(Theme.inkSoft)
-                }
-                Spacer()
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
-                    .fill(Theme.surfaceLow)
-            )
-        }
-    }
+    // NOT: `quickEvaluationSection` ve `productCard` artık `ProductIdentificationResultView`
+    // (embedded) tarafından render ediliyor. Burada sadece host'a özel section'lar
+    // (review summary, warnings, suggestions, manual form, advanced fields) kalır.
 
     // MARK: - Header
 
@@ -249,63 +277,9 @@ struct ProductReviewView: View {
         }
     }
 
-    // MARK: - Sonuç kartı
-
-    private func productCard(_ p: RecognizedProduct) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Üst meta — ince satır: confidence + ayraç + source.
-            // Eski filled capsule rahatsız ediyordu, şimdi sadece dot + text.
-            metaRow
-
-            HStack(alignment: .top, spacing: 14) {
-                AsyncRemoteImage(url: resolveImageURL(p.imageUrl) ?? capturedImageURL)
-                    .frame(width: 90, height: 90)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.radiusSmall, style: .continuous))
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text((p.brand ?? "").uppercased())
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Theme.inkSoft)
-                    Text(p.name ?? L("Bilinmeyen ürün"))
-                        .font(Theme.Typo.headline)
-                        .foregroundStyle(Theme.ink)
-                        .lineLimit(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let cat = p.subcategory ?? p.category {
-                        Text(cat)
-                            .font(Theme.Typo.caption)
-                            .foregroundStyle(Theme.inkMute)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-
-            // INCI listesi backend'in top-level "ingredients" array'inden geliyor;
-            // RecognizedProduct'ta INCI yok (backend D1 row'u verir).
-            if let inci = recognized?.inciList, !inci.isEmpty {
-                inciDisclosure(inci)
-            }
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
-                .fill(Theme.surface)
-        )
-    }
-
-    /// Kartın üst tarafında SADECE confidence — renkli nokta + label, çok sade.
-    @ViewBuilder
-    private var metaRow: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(confidence.foreground)
-                .frame(width: 6, height: 6)
-            Text(confidence.label)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(confidence.foreground)
-            Spacer(minLength: 0)
-        }
-    }
+    // NOT: `productCard`, `metaRow`, `inciDisclosure` ve `inciExpanded` state'i
+    // `ProductIdentificationResultView`'a taşındı (header + INCI özet section).
+    // Confidence renkli dot/label artık `verificationBanner`'da görülüyor.
 
     /// Kartın en altında ince kaynak ipucu — küçük ikon + tek satır insancıl label.
     /// `parallel:consensus (sources=visual+fts score=1.34)` gibi internal via'lar
@@ -323,25 +297,6 @@ struct ProductReviewView: View {
             }
             .foregroundStyle(Theme.inkMute)
         }
-    }
-
-    @available(*, deprecated, message: "Kapsül badge kullanılmıyor, metaRow ile birleştirildi")
-    @ViewBuilder
-    private var confidenceBadge: some View {
-        EmptyView()
-    }
-
-    /// Backend response'unda source: hangi yoldan tanındı?
-    /// "obf" → OpenBeautyFacts DB (internal)
-    /// "incidecoder" → INCIDecoder canlı scrape
-    /// "serper_extracted" → AI + web search
-    /// "ai_partial" → kaynaksız AI (legacy, kullanılmıyor)
-    /// "user_contributed" → daha önce başka kullanıcı eklemiş, DB'de mevcut
-    /// "manual" → manuel giriş
-    @available(*, deprecated, message: "Kapsül badge kullanılmıyor, metaRow ile birleştirildi")
-    @ViewBuilder
-    private var sourceBadge: some View {
-        EmptyView()
     }
 
     /// Bu çağrıda nereden bulundu? Önce backend `via` (runtime path), yoksa `source`.
@@ -384,39 +339,6 @@ struct ProductReviewView: View {
         case "manual":           return (L("Manuel"), "pencil")
         default:                 return (raw, "tag")
         }
-    }
-
-    private func inciDisclosure(_ inci: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button {
-                Haptics.selection()
-                withAnimation(.easeInOut(duration: 0.2)) { inciExpanded.toggle() }
-            } label: {
-                HStack {
-                    Text("\(L("İçindekiler")) (\(inci.count))")
-                        .font(Theme.Typo.body.weight(.medium))
-                        .foregroundStyle(Theme.ink)
-                    Spacer()
-                    Image(systemName: inciExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Theme.inkSoft)
-                }
-            }
-            .buttonStyle(.plain)
-
-            if inciExpanded {
-                Text(inci.joined(separator: ", "))
-                    .font(Theme.Typo.caption)
-                    .foregroundStyle(Theme.inkSoft)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.radiusSmall, style: .continuous)
-                .fill(Theme.canvas)
-        )
     }
 
     // MARK: - Suggestion listesi

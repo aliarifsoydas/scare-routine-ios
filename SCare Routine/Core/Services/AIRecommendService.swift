@@ -26,4 +26,18 @@ final class AIRecommendService {
         )
         return try await api.request(.aiRecommendRoutine, body: body)
     }
+
+    /// Haftalık planı al. `focus` opsiyonel — "refresh" geçirilirse backend
+    /// cache'i bypass eder ve yeni bir plan üretir. LLM çağrısı uzun sürebilir,
+    /// caller tarafında 30-45s timeout beklenir.
+    func recommendWeeklyPlan(
+        locale: String,
+        focus: String? = nil
+    ) async throws -> WeeklyPlanResponse {
+        let body = AIRecommendWeeklyPlanRequest(
+            locale: locale,
+            focus: focus?.isEmpty == true ? nil : focus
+        )
+        return try await api.request(.aiRecommendWeeklyPlan, body: body)
+    }
 }

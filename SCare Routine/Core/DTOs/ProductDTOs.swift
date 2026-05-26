@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 // MARK: - Quick Evaluate (pre-check + LLM verdict)
 
@@ -10,11 +11,11 @@ import Foundation
 /// ürün varsa `duplicate` verdict + duplicate kayıt ID'si döner.
 ///
 /// JSON snake_case alanları (`category_id`, `photo_url`, `fit_score`,
-/// `duplicate_product_id`, `duplicate_product_name`) APIClient'ın
-/// `convertFromSnakeCase` stratejisi ile otomatik camelCase'e map edilir;
-/// burada açık `CodingKeys` tanımlamıyoruz.
-struct QuickEvaluateResponse: Codable, Sendable {
-    struct Product: Codable, Sendable {
+/// `duplicate_product_id`, `duplicate_product_name`, `conflicts_with`)
+/// APIClient'ın `convertFromSnakeCase` stratejisi ile otomatik camelCase'e
+/// map edilir; burada açık `CodingKeys` tanımlamıyoruz.
+struct QuickEvaluateResponse: Decodable, Sendable {
+    struct Product: Decodable, Sendable {
         let id: String
         let name: String
         let brand: String?
@@ -33,8 +34,15 @@ struct QuickEvaluateResponse: Codable, Sendable {
     let duplicateProductName: String?
     let reasons: [String]
     let via: Via
+    /// Kullanıcının arşivinde bulunan, bu yeni ürünle çakışan ürünler.
+    /// Eski backend versiyonu bu field'ı dönmezse boş array olarak decode edilir
+    /// (defensive — flow bozulmaz).
+    let conflictsWith: [ConflictItem]
+    /// Cache hint — backend cevabı önbellekten mi geldi, hangi kaynaktan?
+    /// Eski versiyon dönmezse nil; iOS bu hint'i sadece debug için kullanır.
+    let meta: Meta?
 
-    enum Verdict: String, Codable, Sendable {
+    enum Verdict: String, Decodable, Sendable {
         case greatFit = "great_fit"
         case goodFit = "good_fit"
         case neutral
@@ -42,9 +50,99 @@ struct QuickEvaluateResponse: Codable, Sendable {
         case duplicate
     }
 
-    enum Via: String, Codable, Sendable {
+    enum Via: String, Decodable, Sendable {
         case preCheck = "pre_check"
         case llm
+    }
+
+    /// Arşivdeki bir ürünle çakışma sinyali. Backend `severity` ile şiddetini
+    /// belirtir — high (mutlaka söyle) / medium (heads-up) / low (FYI).
+    struct ConflictItem: Decodable, Sendable, Identifiable, Hashable {
+        var id: String { userProductId }
+        let userProductId: String
+        let userProductName: String
+        let reason: String
+        let severity: Severity
+
+        enum Severity: String, Decodable, Sendable {
+            case high, medium, low
+        }
+    }
+
+    /// Backend `_meta` zarfı (varsa). `cached=true` + `source` (`idempotency_60s`,
+    /// `fresh`, `speculative_hit`) — debug logging için.
+    struct Meta: Decodable, Sendable {
+        let cached: Bool?
+        let source: String?
+    }
+
+    // MARK: - Defensive decoding
+    //
+    // Eski backend `conflicts_with` / `_meta` dönmezse decode patlamasın diye
+    // explicit init veriyoruz. `convertFromSnakeCase` zaten field isimlerini
+    // map ediyor; burada sadece "yoksa default" davranışını ekliyoruz.
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.product = try c.decode(Product.self, forKey: .product)
+        self.fitScore = try c.decode(Int.self, forKey: .fitScore)
+        self.verdict = try c.decode(Verdict.self, forKey: .verdict)
+        self.pros = (try? c.decodeIfPresent([String].self, forKey: .pros)) ?? []
+        self.cons = (try? c.decodeIfPresent([String].self, forKey: .cons)) ?? []
+        self.duplicateProductId = try? c.decodeIfPresent(String.self, forKey: .duplicateProductId)
+        self.duplicateProductName = try? c.decodeIfPresent(String.self, forKey: .duplicateProductName)
+        self.reasons = (try? c.decodeIfPresent([String].self, forKey: .reasons)) ?? []
+        self.via = (try? c.decodeIfPresent(Via.self, forKey: .via)) ?? .llm
+        self.conflictsWith = (try? c.decodeIfPresent([ConflictItem].self, forKey: .conflictsWith)) ?? []
+        // `_meta` özel durum: `.convertFromSnakeCase` leading underscore'u
+        // koruyor — `meta` key'i ile bulunamaz. Önce `meta`, sonra `_meta` dene.
+        // Bu sayede backend `meta` veya `_meta` ile gönderse de çalışır.
+        if let m = try? c.decodeIfPresent(Meta.self, forKey: .meta) {
+            self.meta = m
+        } else if let m = try? c.decodeIfPresent(Meta.self, forKey: .underscoreMeta) {
+            self.meta = m
+        } else {
+            self.meta = nil
+        }
+    }
+
+    /// Memberwise initializer — preview/test'lerde ve `QuickScanResultPanel`
+    /// fallback'lerinde elle örnek üretmek için gerekli. Synthesized init
+    /// custom `init(from:)` eklenince kayboluyor.
+    init(
+        product: Product,
+        fitScore: Int,
+        verdict: Verdict,
+        pros: [String],
+        cons: [String],
+        duplicateProductId: String?,
+        duplicateProductName: String?,
+        reasons: [String],
+        via: Via,
+        conflictsWith: [ConflictItem] = [],
+        meta: Meta? = nil
+    ) {
+        self.product = product
+        self.fitScore = fitScore
+        self.verdict = verdict
+        self.pros = pros
+        self.cons = cons
+        self.duplicateProductId = duplicateProductId
+        self.duplicateProductName = duplicateProductName
+        self.reasons = reasons
+        self.via = via
+        self.conflictsWith = conflictsWith
+        self.meta = meta
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case product, fitScore, verdict, pros, cons
+        case duplicateProductId, duplicateProductName
+        case reasons, via, conflictsWith
+        // Hem `meta` hem de `_meta` (leading underscore convertFromSnakeCase
+        // tarafından korunur) — backend hangisini yollarsa onunla decode et.
+        case meta
+        case underscoreMeta = "_meta"
     }
 }
 
@@ -76,17 +174,57 @@ struct ProductRecognizeRequest: Encodable {
     /// Background-removed FeaturePrint — kullanıcı el-tutup çekti, white-bg compose ile
     /// katalog stüdyo fotosuna yakınlık çok artar. Paralel Vectorize query, daha yüksek score.
     let featurePrintClean: [Float]?
+    /// Capture anı Apple Vision debug datası (saliency + classification + stability).
+    /// Fine-tune için backend'de saklanır; recognition'ı etkilemez.
+    let captureDebug: CaptureDebugPayload?
 }
 
-/// Backend cascade'in döndürdüğü sonuç.
+/// Capture debug metadata — backend `capture_debug` JSON. APIClient encoder
+/// convertToSnakeCase ile alan adları snake_case'e döner (salientBox → salient_box).
+struct CaptureDebugPayload: Encodable {
+    /// Vision normalized bounding box [x, y, w, h] (bottom-left origin) veya nil.
+    let salientBox: [Double]?
+    let classifications: [Classification]
+    let instability: Double
+    let stable: Bool
+
+    struct Classification: Encodable {
+        let id: String
+        let confidence: Double
+    }
+
+    /// Camera controller'ın AutoCaptureDebug struct'ından dönüştürür.
+    init(from debug: AutoCaptureDebug) {
+        if let b = debug.salientBox {
+            salientBox = [Double(b.minX), Double(b.minY), Double(b.width), Double(b.height)]
+        } else {
+            salientBox = nil
+        }
+        classifications = debug.classifications.map {
+            Classification(id: $0.id, confidence: Double($0.confidence))
+        }
+        instability = Double(debug.instability)
+        stable = debug.stable
+    }
+}
+
+/// Backend ürün tanıma cevabı — tüm tanıma endpoint'lerinin (`recognize`,
+/// `by-barcode`, `search?top_match=true`) ortak shape'i.
 ///
-/// Backend format: `{ product, ingredients[], source, confidence }`
-/// — product D1 row'u (image_url, category_id, verified_at), ingredients ayrı array.
-/// iOS bunu defensive olarak parse eder; tüm field'lar optional.
-struct ProductRecognizeResponse: Decodable {
+/// Backend format: `{ product, ingredients[], source, confidence, via,
+/// attempt_id, suggestions[], verification, review_summary, warnings[], _meta }`
+///
+/// iOS bunu defensive olarak parse eder; spec'teki "non-optional" alanlar bile
+/// (`product`, `confidence`, `source`, `via`) iOS tarafında **optional** tutulur
+/// çünkü hata/edge-case akışlarında view layer manuel olarak `product=nil` ile
+/// `ProductRecognizeResponse(...)` literal'ı üretebiliyor. Backward compat için.
+struct ProductIdentifyResponse: Decodable, Sendable {
     let product: RecognizedProduct?
     let ingredients: [RecognizedIngredient]?
+    /// "low" | "medium" | "high"  (geçersiz değer → "low" default)
     let confidence: String?
+    /// "barcode_explicit" | "barcode_ocr_parsed" | "recognize_full" |
+    /// "search_top_hit" | "manual_added"
     let source: String?
     /// Runtime path: bu çağrıda hangi yoldan tanındı?
     let via: String?
@@ -94,11 +232,54 @@ struct ProductRecognizeResponse: Decodable {
     let attemptId: String?
     /// Sibling adaylar — winner kesin değilse user'a "şunlardan biri mi?" diye sorulur.
     let suggestions: [RecognizedProduct]?
-
+    /// LLM verification info (cross-check pass — ürün gerçekten match mi?)
+    let verification: VerificationInfo?
     /// Review özeti — kullanıcının skin_type'ına göre filtrelenmiş, fallback'lı.
     let reviewSummary: ReviewSummary?
     /// Bu üründeki içeriklerden, kullanıcının cilt tipinde uyarı gerektirenler.
     let warnings: [IngredientWarning]?
+    /// Cache hint + debug source — backend `_meta` zarfı.
+    let meta: Meta?
+
+    /// LLM cross-check verdict — backend ikinci geçişte ürünü doğrular.
+    struct VerificationInfo: Decodable, Sendable {
+        let performed: Bool
+        /// "yes" | "no" | "uncertain" — geçersiz değer veya boş → nil
+        let match: String?
+        let reason: String?
+        let latencyMs: Int?
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.performed = (try? c.decodeIfPresent(Bool.self, forKey: .performed)) ?? false
+            // Sadece beyaz listedeki değerleri kabul et — backend tipo'su client'ı kırmasın.
+            let rawMatch = try? c.decodeIfPresent(String.self, forKey: .match)
+            if let m = rawMatch, ["yes", "no", "uncertain"].contains(m.lowercased()) {
+                self.match = m.lowercased()
+            } else {
+                self.match = nil
+            }
+            self.reason = try? c.decodeIfPresent(String.self, forKey: .reason)
+            self.latencyMs = try? c.decodeIfPresent(Int.self, forKey: .latencyMs)
+        }
+
+        init(performed: Bool, match: String?, reason: String?, latencyMs: Int?) {
+            self.performed = performed
+            self.match = match
+            self.reason = reason
+            self.latencyMs = latencyMs
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case performed, match, reason, latencyMs
+        }
+    }
+
+    /// Backend `_meta` zarfı — cache durumu + kaynak.
+    struct Meta: Decodable, Sendable {
+        let cached: Bool?
+        let source: String?
+    }
 
     init(
         product: RecognizedProduct? = nil,
@@ -108,8 +289,10 @@ struct ProductRecognizeResponse: Decodable {
         via: String? = nil,
         attemptId: String? = nil,
         suggestions: [RecognizedProduct]? = nil,
+        verification: VerificationInfo? = nil,
         reviewSummary: ReviewSummary? = nil,
-        warnings: [IngredientWarning]? = nil
+        warnings: [IngredientWarning]? = nil,
+        meta: Meta? = nil
     ) {
         self.product = product
         self.ingredients = ingredients
@@ -118,14 +301,87 @@ struct ProductRecognizeResponse: Decodable {
         self.via = via
         self.attemptId = attemptId
         self.suggestions = suggestions
+        self.verification = verification
         self.reviewSummary = reviewSummary
         self.warnings = warnings
+        self.meta = meta
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.product = try? c.decodeIfPresent(RecognizedProduct.self, forKey: .product)
+        self.ingredients = try? c.decodeIfPresent([RecognizedIngredient].self, forKey: .ingredients)
+
+        // confidence: "low"/"medium"/"high" dışında → "low" default
+        let rawConf = try? c.decodeIfPresent(String.self, forKey: .confidence)
+        if let r = rawConf {
+            let low = r.lowercased()
+            self.confidence = (["low", "medium", "high"].contains(low)) ? low : "low"
+        } else {
+            self.confidence = nil
+        }
+
+        self.source = try? c.decodeIfPresent(String.self, forKey: .source)
+        self.via = try? c.decodeIfPresent(String.self, forKey: .via)
+        self.attemptId = try? c.decodeIfPresent(String.self, forKey: .attemptId)
+        self.suggestions = try? c.decodeIfPresent([RecognizedProduct].self, forKey: .suggestions)
+        self.verification = try? c.decodeIfPresent(VerificationInfo.self, forKey: .verification)
+        self.reviewSummary = try? c.decodeIfPresent(ReviewSummary.self, forKey: .reviewSummary)
+        self.warnings = try? c.decodeIfPresent([IngredientWarning].self, forKey: .warnings)
+
+        // `_meta` özel durum — `convertFromSnakeCase` leading underscore'u korur.
+        if let m = try? c.decodeIfPresent(Meta.self, forKey: .meta) {
+            self.meta = m
+        } else if let m = try? c.decodeIfPresent(Meta.self, forKey: .underscoreMeta) {
+            self.meta = m
+        } else {
+            self.meta = nil
+        }
     }
 
     var inciList: [String] {
         (ingredients ?? [])
             .sorted { $0.orderIndex < $1.orderIndex }
             .map { $0.inciName }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case product, ingredients, confidence, source, via
+        case attemptId, suggestions, verification
+        case reviewSummary, warnings
+        case meta
+        case underscoreMeta = "_meta"
+    }
+}
+
+// MARK: - Backward compat typealiases
+//
+// Eski callsite'lar (QuickScanResultPanel, ProductReviewView, AddProductFlowView)
+// `ProductRecognizeResponse` ve `ProductByBarcodeResponse` ile compile ediyor.
+// Agent C bunları zamanla `ProductIdentifyResponse`'a migrate edecek; o güne kadar
+// typealias ile aynı tip olarak çalışır.
+typealias ProductRecognizeResponse = ProductIdentifyResponse
+typealias ProductByBarcodeResponse = ProductIdentifyResponse
+
+// MARK: - Search response
+
+/// `/v1/products/search` cevabı.
+///
+/// `topMatch=true` query param verildiğinde backend tek-bir-en-iyi-eşleşmeyi
+/// `ProductIdentifyResponse` formatında (`top_match`) embed eder; aksi halde
+/// nil. `products` listesi paralel olarak gönderilir (manual ekleme UI'ı).
+struct ProductSearchResponse: Decodable, Sendable {
+    let products: [RecognizedProduct]
+    let topMatch: ProductIdentifyResponse?
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.products = (try? c.decodeIfPresent([RecognizedProduct].self, forKey: .products)) ?? []
+        self.topMatch = try? c.decodeIfPresent(ProductIdentifyResponse.self, forKey: .topMatch)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case products, topMatch
     }
 }
 
@@ -288,12 +544,6 @@ struct RecognizedProduct: Decodable, Hashable, Identifiable {
         case verifiedCount, lastVerifiedAt
         case inciCleanCount, inciTypoCount, inciInvalidCount
     }
-}
-
-/// `GET /v1/products/by-barcode/:barcode` — barcode ile direkt ürün + INCI listesi döner.
-struct ProductByBarcodeResponse: Decodable {
-    let product: RecognizedProduct?
-    let ingredients: [RecognizedIngredient]?
 }
 
 // MARK: - Upload sign

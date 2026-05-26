@@ -47,6 +47,10 @@ struct QuickScanResultPanel: View {
     /// Paneli ve flow sheet'ini kapatır.
     let onDismiss: () -> Void
 
+    /// Düşük confidence durumunda kullanıcının "manuel ara" diyerek manuel ekleme
+    /// flow'una geçmesini sağlar. Parent vermezse `onRescan`'a düşer (tekrar tara).
+    var onManualEntry: (() -> Void)? = nil
+
     /// NDJSON streaming opt-in. Backend hazır olunca true yap, `evaluate()`
     /// `URLSession.bytes(for:)` üzerinden chunk-by-chunk consume eder.
     /// Şimdilik daima single-shot JSON fetch.
@@ -56,14 +60,40 @@ struct QuickScanResultPanel: View {
         case loading
         case loaded(QuickEvaluateResponse)
         case error(String)
+        /// Recognition confidence düşük → kullanıcı önce ürünün doğru olup olmadığını
+        /// onaylasın. `quickEvaluate` çağrılmaz; kullanıcı `Bu doğru ürün` derse
+        /// confidence guard aşılır, normal `.loading → .loaded` akışına geçilir.
+        case awaitingConfirmation
+    }
+
+    /// Recognition confidence threshold sonucu — `evaluate()` başlamadan önce
+    /// `actionFor(confidence:)` ile karar verilir.
+    ///
+    /// - `proceedSilent`: high confidence — analiz hemen çalışsın.
+    /// - `proceedWithBanner`: medium — analiz çalışsın, üstte "doğru tanıdığımdan
+    ///   tam emin değilim" banner göster.
+    /// - `requireConfirm`: low (veya unknown) — `quickEvaluate` BAŞLATMA, kullanıcı
+    ///   önce ürünün doğru olup olmadığını onaylasın.
+    private enum ConfidenceAction {
+        case proceedSilent
+        case proceedWithBanner
+        case requireConfirm
     }
 
     @State private var phase: Phase = .loading
     @State private var statusIndex: Int = 0
     @State private var statusTimer: Timer?
-    /// Loaded sonrası staggered reveal'ı tetikleyen sayaç — her result için
-    /// yeni bir değer alır, animation `.value:` parametresine geçer.
-    @State private var revealToken: Int = 0
+    // NOT: `revealToken` (staggered reveal) ve `showLowConfidenceBanner` artık
+    // gerek yok — loaded UI'ı `ProductIdentificationResultView` render ediyor,
+    // verification banner'ı kendi içinde confidence'a göre gösteriyor.
+
+    /// Wrong-match düzeltme sheet'i — kullanıcı "bu yanlış ürün" footer'ına bastı.
+    /// `initialResult.attemptId` yoksa footer hiç render edilmez; bu state ancak
+    /// attemptId varken `true` olabilir.
+    @State private var showWrongMatchSheet: Bool = false
+    /// Wrong-match düzeltme başarıyla gönderildiyse footer'ı tekrar göstermemek
+    /// için flag — kullanıcı aynı taramada birden fazla düzeltme yollamasın.
+    @State private var wrongMatchSubmitted: Bool = false
 
     /// Spotify-daylist tarzı dönen status label'ları — LLM beklerken kullanıcının
     /// boşa beklediği hissini azaltır. Pre-check (~500ms) cevabı bu rotation'ı
@@ -76,6 +106,68 @@ struct QuickScanResultPanel: View {
     ]
 
     var body: some View {
+        // `.loaded` phase'i tek render kaynağına (ProductIdentificationResultView)
+        // devrederiz; loading / error / awaitingConfirmation hâlâ host'a ait
+        // çünkü Quick Scan'a özel UX (confidence guard, status rotation, retry).
+        Group {
+            switch phase {
+            case .loaded(let result):
+                ProductIdentificationResultView(
+                    mode: .preview,
+                    identifyResult: initialResult ?? ProductRecognizeResponse(
+                        product: nil,
+                        ingredients: nil,
+                        confidence: initialResult?.confidence ?? "high",
+                        source: initialResult?.source
+                    ),
+                    evaluationResult: result,
+                    isEvaluating: false,
+                    capturedImage: capturedImage,
+                    photoUrl: photoUrl,
+                    onClose: { onDismiss() },
+                    onAddToArchive: { onAddToArchive() },
+                    onWrongMatch: wrongMatchCallback,
+                    onManualEntry: onManualEntry
+                )
+            default:
+                hostedPhases
+            }
+        }
+        .navigationTitle(L("Hızlı Tarama"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await startWithConfidenceGuard()
+        }
+        .sheet(isPresented: $showWrongMatchSheet) {
+            if let attemptId = initialResult?.attemptId, !attemptId.isEmpty {
+                WrongMatchSheet(
+                    attemptId: attemptId,
+                    onCorrected: { _ in
+                        // Düzeltme gönderildi — footer'ı bir daha gösterme. Toast/
+                        // navigate kararı parent flow'a ait; bu panel sadece sinyali
+                        // submit etti.
+                        wrongMatchSubmitted = true
+                    },
+                    onManualEntryRequested: onManualEntry
+                )
+            }
+        }
+    }
+
+    /// `onWrongMatch` callback'i — sadece `attemptId` varken footer görünür ve
+    /// callback bağlı olur. `wrongMatchSubmitted=true` durumunda da nil dönüp
+    /// footer'ı gizleriz (kullanıcı zaten düzeltme yolladı).
+    private var wrongMatchCallback: (() -> Void)? {
+        guard let attemptId = initialResult?.attemptId, !attemptId.isEmpty else {
+            return nil
+        }
+        guard !wrongMatchSubmitted else { return nil }
+        return { showWrongMatchSheet = true }
+    }
+
+    /// Loaded olmayan tüm phase'ler (loading / error / awaitingConfirmation) —
+    /// eski host UI'ı korur. Hero + retry/footer Quick Scan'a özgü.
+    private var hostedPhases: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 hero
@@ -85,11 +177,14 @@ struct QuickScanResultPanel: View {
                 case .loading:
                     loadingSection
                         .transition(.opacity)
-                case .loaded(let result):
-                    loadedSection(result)
                 case .error(let msg):
                     errorSection(msg)
                         .transition(.opacity)
+                case .awaitingConfirmation:
+                    awaitingConfirmationSection
+                        .transition(.opacity)
+                case .loaded:
+                    EmptyView()  // delegated above
                 }
             }
             .padding(20)
@@ -97,13 +192,8 @@ struct QuickScanResultPanel: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.canvas.ignoresSafeArea())
-        .navigationTitle(L("Hızlı Tarama"))
-        .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             footer
-        }
-        .task {
-            await evaluate()
         }
     }
 
@@ -216,13 +306,89 @@ struct QuickScanResultPanel: View {
         statusTimer = nil
     }
 
-    /// Loaded state — staggered reveal:
-    /// gauge (0s) → verdict (0.2s) → duplicate (0.4s) → pros/cons (0.6s) → reasons (0.8s).
-    /// QuickEvaluationView'ın iç bileşimi olduğu gibi kullanılır; reveal animasyonu
-    /// bu panele özel (review akışı yoksa staggered animation göstermez).
-    private func loadedSection(_ result: QuickEvaluateResponse) -> some View {
-        QuickEvaluationView(result: result, context: .scanning)
-            .modifier(StaggeredReveal(token: revealToken))
+    // NOTE: `loadedSection` / `lowConfidenceBanner` artık dead — loaded UI'ı
+    // `ProductIdentificationResultView` render ediyor; medium confidence banner
+    // de orada `verificationBanner` adıyla yaşıyor. Bu view sadece host fazlarını
+    // (loading / error / awaitingConfirmation) tutar.
+
+    /// Düşük confidence durumunda analiz çalışmaz — kullanıcı önce ürünün doğru
+    /// olup olmadığını onaylasın diye 3 seçenekli overlay gösterilir:
+    /// "Bu doğru ürün" (analizi başlat) / "Manuel ara" / "Tekrar fotoğraf çek".
+    private var awaitingConfirmationSection: some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Theme.alert)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("Bu ürünü tanımakta zorlandım"))
+                        .font(Theme.Typo.headline)
+                        .foregroundStyle(Theme.ink)
+                    Text(L("Devam etmeden önce, gösterdiğim ürünün doğru olduğunu onayla."))
+                        .font(Theme.Typo.caption)
+                        .foregroundStyle(Theme.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+
+            VStack(spacing: 8) {
+                Button {
+                    Haptics.selection()
+                    Task { await userConfirmedProduct() }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark")
+                        Text(L("Bu doğru ürün"))
+                    }
+                    .font(Theme.Typo.body.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(RoundedRectangle(cornerRadius: Theme.radiusSmall).fill(Theme.ink))
+                    .foregroundStyle(Theme.onAccent)
+                }
+                Button {
+                    Haptics.light()
+                    if let onManualEntry { onManualEntry() } else { onRescan() }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                        Text(L("Manuel ara"))
+                    }
+                    .font(Theme.Typo.body.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: Theme.radiusSmall)
+                            .strokeBorder(Theme.ink, lineWidth: 1.2)
+                    )
+                    .foregroundStyle(Theme.ink)
+                }
+                Button {
+                    Haptics.light()
+                    onRescan()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "camera.fill")
+                        Text(L("Tekrar fotoğraf çek"))
+                    }
+                    .font(Theme.Typo.body.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: Theme.radiusSmall)
+                            .strokeBorder(Theme.divider, lineWidth: 1)
+                    )
+                    .foregroundStyle(Theme.inkSoft)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
+                .fill(Theme.surface)
+        )
     }
 
     private func errorSection(_ msg: String) -> some View {
@@ -255,6 +421,9 @@ struct QuickScanResultPanel: View {
 
     private var footer: some View {
         VStack(spacing: 10) {
+            // `.awaitingConfirmation` durumunda kullanıcı henüz ürünü onaylamamış,
+            // doğrudan arşive ekleme yanlış ürün eklenmesi riskine yol açar →
+            // butonu disable et (overlay tarafındaki "Bu doğru ürün" CTA yönlendirir).
             Button {
                 Haptics.heavy()
                 onAddToArchive()
@@ -263,9 +432,13 @@ struct QuickScanResultPanel: View {
                     .font(Theme.Typo.body.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.ink))
-                    .foregroundStyle(Theme.onAccent)
+                    .background(
+                        RoundedRectangle(cornerRadius: Theme.radius)
+                            .fill(isAwaitingConfirmation ? Theme.surfaceLow : Theme.ink)
+                    )
+                    .foregroundStyle(isAwaitingConfirmation ? Theme.inkMute : Theme.onAccent)
             }
+            .disabled(isAwaitingConfirmation)
             HStack(spacing: 10) {
                 Button {
                     Haptics.light()
@@ -312,6 +485,13 @@ struct QuickScanResultPanel: View {
         return false
     }
 
+    /// Footer "Arşive ekle" butonunun disabled olup olmayacağı.
+    /// Confidence guard kullanıcıyı bekletiyorken arşive ekleme akışını engelle.
+    private var isAwaitingConfirmation: Bool {
+        if case .awaitingConfirmation = phase { return true }
+        return false
+    }
+
     /// Backend `quickEvaluate(productId:)` çağrısı.
     /// `productId` boşsa hemen error state'ine düşer — recognize match'i kaçırmış demek.
     ///
@@ -346,12 +526,8 @@ struct QuickScanResultPanel: View {
             }
             await MainActor.run {
                 stopStatusRotation()
-                phase = .loaded(result)
-                // Reveal token'ı arttır → StaggeredReveal animation'ını tetikle.
-                // Animation duration'ı reveal modifier kendi içinde stagger ediyor;
-                // burada sadece geçişi başlat.
                 withAnimation(.easeOut(duration: 0.35)) {
-                    revealToken &+= 1
+                    phase = .loaded(result)
                 }
             }
         } catch {
@@ -361,6 +537,48 @@ struct QuickScanResultPanel: View {
                 phase = .error(message)
             }
         }
+    }
+
+    // MARK: - Confidence guard
+    //
+    // `.task { await evaluate() }` doğrudan analiz başlatıyordu — bu yanlış match
+    // durumunda kullanıcıya yanlış ürün için yanlış analiz gösteriyordu. Bu yüzden
+    // recognize confidence'a göre 3 farklı UX seçiyoruz:
+    //
+    // - **high**: analiz hemen çalışır, banner yok (proceedSilent)
+    // - **medium**: analiz çalışır + üstte sarı "tam emin değilim" banner (proceedWithBanner)
+    // - **low / unknown**: analiz BAŞLAMAZ, kullanıcı önce ürünü onaylasın (requireConfirm)
+
+    /// Backend recognize cevabındaki confidence string'inden UI aksiyonunu seçer.
+    /// Tanımsız değerler defensive olarak `.requireConfirm`'e düşer — yanlış match
+    /// için yanlış analiz göstermemek üstün önceliklidir.
+    private func actionFor(confidence: String?) -> ConfidenceAction {
+        switch confidence {
+        case "high":   return .proceedSilent
+        case "medium": return .proceedWithBanner
+        default:       return .requireConfirm  // "low", "none", nil, bilinmeyen
+        }
+    }
+
+    /// `.task` modifier'ından çağrılır. Confidence guard'a göre ya direkt
+    /// `evaluate()` başlatır, ya `awaitingConfirmation` phase'ine düşer.
+    /// Medium confidence banner'ı `ProductIdentificationResultView` kendi içinde
+    /// gösteriyor (verificationBanner) — burada `proceedWithBanner` ile
+    /// `proceedSilent` aynı davranır.
+    private func startWithConfidenceGuard() async {
+        let action = actionFor(confidence: initialResult?.confidence)
+        switch action {
+        case .proceedSilent, .proceedWithBanner:
+            await evaluate()
+        case .requireConfirm:
+            await MainActor.run { phase = .awaitingConfirmation }
+        }
+    }
+
+    /// Kullanıcı confirm overlay'inde "Bu doğru ürün" derse: confidence'ı override
+    /// edip normal `evaluate()` akışına gir.
+    private func userConfirmedProduct() async {
+        await evaluate()
     }
 }
 

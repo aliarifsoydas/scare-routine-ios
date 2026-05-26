@@ -41,6 +41,14 @@ struct AddProductFlowView: View {
     @State private var requestSnapshot: Bool = false
     @State private var permission: CameraPermission = .notDetermined
 
+    // AutoCapture state — self-managed AVCaptureSession + scene stability
+    @State private var autoCaptureState: AutoCaptureState = .searching
+    @State private var instabilityRatio: CGFloat = 1.0
+    @State private var autoCaptureResetTrigger: Int = 0
+    @State private var autoCaptureSalientBox: CGRect?
+    /// Son capture'ın Vision debug metadata'sı — recognize request'e eklenir (fine-tune).
+    @State private var lastCaptureDebug: AutoCaptureDebug?
+
     // Galeri
     @State private var pickerItem: PhotosPickerItem?
     @State private var backPickerItem: PhotosPickerItem?
@@ -77,9 +85,8 @@ struct AddProductFlowView: View {
     /// gecikmesi (~2-3s) yaşamayız.
     @State private var frontCaptured: Bool = false
 
-    /// Scanner reset trigger — front→back geçişinde increment ederiz, scanner
-    /// eski highlights/state'i temizler.
-    @State private var scannerResetGen: Int = 0
+    // (Eski scannerResetGen kaldırıldı — AutoCaptureCameraView için
+    // autoCaptureResetTrigger kullanılır.)
 
     /// Front foto çekildiği anda 1.2s kısa bir overlay feedback göster ("Ön çekildi")
     /// → kullanıcı geçişi net fark eder.
@@ -123,7 +130,15 @@ struct AddProductFlowView: View {
                                 Task { await quickScanAddToArchive() }
                             },
                             onRescan: { resetToCamera() },
-                            onDismiss: { dismiss() }
+                            onDismiss: { dismiss() },
+                            onManualEntry: {
+                                // Düşük confidence → kullanıcı yanlış tanımayı reddedip
+                                // manuel arama yapmak istedi. Quick Scan akışında ayrı bir
+                                // manuel girdi ekranı yok; kullanıcıyı kameraya geri
+                                // yollayıp orada "Manuel ekle" butonunu kullanmasını
+                                // sağlıyoruz (tek doğru manuel akış noktası).
+                                resetToCamera()
+                            }
                         )
                     } else {
                         ProductReviewView(
@@ -259,7 +274,7 @@ struct AddProductFlowView: View {
                 .padding(.top, 12)
 
             // Caption — tek satır durum (kompakt)
-            if CameraScannerView.isSupported, permission == .authorized {
+            if permission == .authorized {
                 HStack(spacing: 6) {
                     Circle()
                         .fill(barcodeMissBanner ? Theme.alert : Theme.inkSoft)
@@ -276,7 +291,7 @@ struct AddProductFlowView: View {
 
             // Aksiyon barı
             VStack(spacing: 12) {
-                if CameraScannerView.isSupported, permission == .authorized {
+                if permission == .authorized {
                     PrimaryActionButton(
                         title: frontCaptured ? L("Arkayı çek") : L("Fotoğraf çek"),
                         systemImage: "camera.fill",
@@ -365,28 +380,29 @@ struct AddProductFlowView: View {
     private var scannerOrFallback: some View {
         switch permission {
         case .authorized:
-            if CameraScannerView.isSupported {
-                CameraScannerView(
-                    detectedBarcode: $detectedBarcode,
-                    detectedText: $detectedText,
-                    mode: .auto,
-                    onCapturePhoto: { img in
-                        if frontCaptured {
-                            Task { await processBackImage(img) }
-                        } else {
-                            capturedImage = img
-                            Task { await processCapturedImage(img) }
-                        }
-                    },
-                    requestSnapshot: $requestSnapshot
-                )
-                .onChange(of: detectedBarcode) { _, newValue in
-                    guard !frontCaptured, let bc = newValue, !bc.isEmpty else { return }
-                    Task { await processBarcode(bc) }
-                }
-            } else {
-                fallbackPanel(icon: "camera.fill",
-                              text: L("Bu cihazda canlı tarama yok.\nGaleri'den seçebilirsin."))
+            AutoCaptureCameraView(
+                detectedBarcode: $detectedBarcode,
+                detectedText: $detectedText,
+                mode: .auto,
+                autoCaptureEnabled: false,  // Manuel çekim — auto-capture false-positive (kartvizit/klavye) yüzünden kapalı. Vision metadata yine toplanır.
+                onCapturePhoto: { img, debug in
+                    lastCaptureDebug = debug
+                    if frontCaptured {
+                        Task { await processBackImage(img) }
+                    } else {
+                        capturedImage = img
+                        Task { await processCapturedImage(img) }
+                    }
+                },
+                requestManualCapture: $requestSnapshot,
+                resetTrigger: $autoCaptureResetTrigger,
+                captureState: $autoCaptureState,
+                instabilityRatio: $instabilityRatio,
+                salientBox: $autoCaptureSalientBox
+            )
+            .onChange(of: detectedBarcode) { _, newValue in
+                guard !frontCaptured, let bc = newValue, !bc.isEmpty else { return }
+                Task { await processBarcode(bc) }
             }
         case .notDetermined:
             fallbackPanel(icon: "camera.metering.unknown",
@@ -534,20 +550,23 @@ struct AddProductFlowView: View {
         // Burada sadece state update.
         detectedBarcode = nil
         detectedText = nil
+        // AutoCaptureCameraView reset — capture state'i .searching'e dönsün, yeni
+        // back foto için tekrar auto-detect aktif olsun.
+        autoCaptureResetTrigger += 1
 
-        // Downscale + 1:1 center crop'u TEK detached task'ta hesapla — main bloklamaz.
-        // Sonuç paylaşılır (bgRemoved + fp + upload aynı downscaled+cropped'ı kullanır).
-        let processedImageTask: Task<(downscaled: UIImage, cropped: UIImage), Never> = Task.detached(priority: .userInitiated) {
-            let down = ProductScanService.shared.downscaleForProcessing(fullResImage)
-            let crop = ProductScanService.shared.centerSquareCrop(down)
-            return (down, crop)
+        // Downscale (resize-only, ORİJİNAL RATIO korunur — cihazda 1:1 crop YOK).
+        // Backend gerekirse kendi 1:1 crop'unu yapar. FP zaten .centerCrop option'ı
+        // ile kendi crop'unu uyguluyor, ekstra cihaz-crop'u gereksizdi.
+        let processedImageTask: Task<UIImage, Never> = Task.detached(priority: .userInitiated) {
+            ProductScanService.shared.downscaleForProcessing(fullResImage)
         }
 
-        // BG-removed image'ı TEK SEFER hesapla — 1:1 cropped square üzerinde.
+        // BG-removed image — downscaled (orijinal ratio) üzerinde. Foreground mask
+        // crop gerektirmez.
         let bgRemovedTask: Task<UIImage?, Never> = Task.detached(priority: .userInitiated) {
-            let cropped = await processedImageTask.value.cropped
+            let down = await processedImageTask.value
             if #available(iOS 17.0, *) {
-                return ProductScanService.shared.backgroundRemovedImage(from: cropped)
+                return ProductScanService.shared.backgroundRemovedImage(from: down)
             }
             return nil
         }
@@ -571,13 +590,14 @@ struct AddProductFlowView: View {
 
         // SPECULATIVE PIPELINE — upload + FP + recognize arka planda detached.
         let uploadTask: Task<ProductScanService.UploadedImage?, Never> = Task.detached(priority: .userInitiated) {
-            let down = await processedImageTask.value.downscaled
+            let down = await processedImageTask.value
             return (try? await ProductScanService.shared.uploadImage(down))
         }
-        // FP de cropped square üzerinde — daha tutarlı embedding (kenarlar atılmış)
+        // FP downscaled (orijinal ratio) üzerinde — VNGenerateImageFeaturePrintRequest
+        // zaten .centerCrop option'ı uyguluyor, ekstra cihaz-crop'u gereksiz.
         let fpTask: Task<[Float]?, Never> = Task.detached(priority: .userInitiated) {
-            let cropped = await processedImageTask.value.cropped
-            return await ProductScanService.shared.featurePrint(from: cropped)
+            let down = await processedImageTask.value
+            return await ProductScanService.shared.featurePrint(from: down)
         }
         let fpCleanTask: Task<(image: UIImage, vec: [Float])?, Never> = Task.detached(priority: .userInitiated) {
             // BG-removed paylaşıyor → backgroundRemovedImage 2. kez çağrılmaz
@@ -698,7 +718,8 @@ struct AddProductFlowView: View {
                 photoKeyClean: nil,
                 ocrBlocksBack: ocrBlocksBack,
                 featurePrint: featurePrint,
-                featurePrintClean: featurePrintClean
+                featurePrintClean: featurePrintClean,
+                captureDebug: lastCaptureDebug
             )
             recognized = resp
             phase = .review
@@ -942,7 +963,7 @@ struct AddProductFlowView: View {
         frontUploadTask = nil
         frontFpTask = nil
         frontFpCleanTask = nil
-        scannerResetGen += 1
+        autoCaptureResetTrigger += 1
         phase = .camera
     }
 }
