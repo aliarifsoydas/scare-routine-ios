@@ -119,6 +119,9 @@ struct ChatCommitRequest: Encodable {
     let mode: String                // new | merge
     let targetRoutineId: String?
     let name: String?
+    let timeSlot: String?           // morning | evening
+    let schedule: RoutineSchedulePayload?
+    let emoji: String?
 }
 
 struct ChatReportRequest: Encodable {

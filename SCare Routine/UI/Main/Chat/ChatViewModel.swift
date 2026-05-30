@@ -99,10 +99,27 @@ final class ChatViewModel {
 
     // MARK: - Commit
 
-    func commit(mode: String, targetRoutineId: String?, name: String?) async -> Bool {
+    /// Merge için mevcut rutinler (commit sheet picker'ı).
+    var existingRoutines: [RoutineResponse] = []
+
+    func loadRoutines() async {
+        existingRoutines = (try? await RoutineService.shared.listRoutines()) ?? []
+    }
+
+    /// timeSlot: "morning" | "evening" → schedule.time/emoji türetilir (AIRecommend ile aynı).
+    func commit(mode: String, targetRoutineId: String?, name: String?, timeSlot: String) async -> Bool {
         guard let session else { return false }
+        let isEvening = timeSlot == "evening"
+        var schedule = RoutineSchedulePayload()
+        schedule.time = isEvening ? "21:00" : "08:00"
+        schedule.tz = TimeZone.current.identifier
+        schedule.frequency = "daily"
+        let emoji = isEvening ? "🌙" : "☀️"
         do {
-            let resp = try await service.commit(id: session.id, mode: mode, targetRoutineId: targetRoutineId, name: name)
+            let resp = try await service.commit(
+                id: session.id, mode: mode, targetRoutineId: targetRoutineId,
+                name: name, timeSlot: timeSlot, schedule: schedule, emoji: emoji
+            )
             committedRoutineId = resp.routine.id
             return true
         } catch {

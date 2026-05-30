@@ -6,7 +6,7 @@ struct ChatView: View {
     @State private var vm: ChatViewModel
     @Environment(\.dismiss) private var dismiss
     @FocusState private var inputFocused: Bool
-    @State private var showCommitConfirm = false
+    @State private var showCommitSheet = false
     @State private var didCommit = false
 
     init(locale: String, existingSessionId: String? = nil) {
@@ -39,15 +39,11 @@ struct ChatView: View {
             } message: {
                 Text(vm.errorMessage ?? "")
             }
-            .confirmationDialog(L("Bu rutini kaydet?"), isPresented: $showCommitConfirm, titleVisibility: .visible) {
-                Button(L("Yeni rutin oluştur")) {
-                    Task {
-                        if await vm.commit(mode: "new", targetRoutineId: nil, name: vm.session?.title) {
-                            Haptics.success(); didCommit = true
-                        }
-                    }
+            .sheet(isPresented: $showCommitSheet) {
+                ChatCommitSheet(vm: vm, defaultName: L("Sabah Rutini")) {
+                    didCommit = true
                 }
-                Button(L("Vazgeç"), role: .cancel) {}
+                .presentationDetents([.medium, .large])
             }
         }
     }
@@ -125,16 +121,16 @@ struct ChatView: View {
             }
 
             Button {
-                Haptics.heavy(); showCommitConfirm = true
+                Haptics.heavy(); showCommitSheet = true
             } label: {
                 Text(didCommit ? L("Kaydedildi ✓") : L("Rutini Kaydet"))
                     .font(Theme.Typo.button)
                     .foregroundStyle(Theme.onAccent)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(vm.readyToCommit && !didCommit ? Theme.ink : Theme.inkMute))
+                        .fill(canCommit ? Theme.ink : Theme.inkMute))
             }
-            .disabled(!vm.readyToCommit || didCommit)
+            .disabled(!canCommit)
         }
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surface))
@@ -175,6 +171,12 @@ struct ChatView: View {
 
     private var canSend: Bool {
         !vm.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !vm.isSending
+    }
+
+    /// Taslakta en az 1 adım varken kaydedilebilir. ready_to_commit yalnızca yumuşak
+    /// bir sinyal (model nadiren true yapıyor) — kaydı bloklamaz.
+    private var canCommit: Bool {
+        !vm.draft.steps.isEmpty && !didCommit
     }
 }
 

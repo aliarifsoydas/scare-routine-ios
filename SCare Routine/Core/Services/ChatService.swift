@@ -47,10 +47,21 @@ final class ChatService {
     }
 
     /// Taslağı rutine yaz. mode: "new" | "merge".
-    func commit(id: String, mode: String, targetRoutineId: String? = nil, name: String? = nil) async throws -> ChatCommitResponse {
+    func commit(
+        id: String,
+        mode: String,
+        targetRoutineId: String? = nil,
+        name: String? = nil,
+        timeSlot: String? = nil,
+        schedule: RoutineSchedulePayload? = nil,
+        emoji: String? = nil
+    ) async throws -> ChatCommitResponse {
         try await api.request(
             .commitChat(id: id),
-            body: ChatCommitRequest(mode: mode, targetRoutineId: targetRoutineId, name: name)
+            body: ChatCommitRequest(
+                mode: mode, targetRoutineId: targetRoutineId, name: name,
+                timeSlot: timeSlot, schedule: schedule, emoji: emoji
+            )
         )
     }
 
