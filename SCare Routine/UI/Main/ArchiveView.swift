@@ -184,21 +184,38 @@ struct ArchiveView: View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(filtered) { p in
-                    Button {
-                        Haptics.light()
-                        selectedItem = p
-                    } label: {
-                        ProductCard(item: p)
-                    }
-                    .buttonStyle(PressedScaleButtonStyle())
-                    .accessibilityLabel(p.name ?? p.nickname ?? L("Ürün"))
-                    .contextMenu {
+                    VStack(spacing: 6) {
+                        Button {
+                            Haptics.light()
+                            selectedItem = p
+                        } label: {
+                            ProductCard(item: p)
+                                .overlay(alignment: .topLeading) {
+                                    if segment == 1 {
+                                        Label(L("Alınacak"), systemImage: "cart.fill")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundStyle(Theme.onAccent)
+                                            .padding(.horizontal, 7).padding(.vertical, 4)
+                                            .background(Capsule().fill(Theme.ink))
+                                            .padding(8)
+                                    }
+                                }
+                        }
+                        .buttonStyle(PressedScaleButtonStyle())
+                        .accessibilityLabel(p.name ?? p.nickname ?? L("Ürün"))
+
+                        // Wishlist kartında görünür "Aldım" → gerçek arşive taşı.
                         if segment == 1 {
                             Button {
                                 Task { await markOwned(p) }
                             } label: {
-                                Label(L("Aldım, ürünlerime taşı"), systemImage: "checkmark.circle")
+                                Label(L("Aldım"), systemImage: "checkmark.circle.fill")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Theme.onAccent)
+                                    .frame(maxWidth: .infinity, minHeight: 32)
+                                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.ink))
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
