@@ -58,7 +58,7 @@ struct MainTabView: View {
             ArchiveView()
                 .id(languageManager.current)
                 .tabItem {
-                    Label(L("Arşiv"), systemImage: "tray.full.fill")
+                    Label(L("Ürünler"), systemImage: "tray.full.fill")
                 }
                 .tag(1)
 

@@ -377,6 +377,12 @@ final class ProductScanService: @unchecked Sendable {
         return resp.products
     }
 
+    /// "Alınacaklar" — wishlist (sahip olunmayan, chat'in önerdiği) ürünler.
+    func listMyWishlist() async throws -> [UserProductResponse] {
+        let resp: ListUserProductsResponse = try await api.request(.listMyWishlist)
+        return resp.products
+    }
+
     /// `/v1/products/:product_id` GET — katalog ürün detayı (INCI dahil).
     ///
     /// Detay sheet'i bunu çağırır. 404 fırlatabilir (katalogdan silinmiş olabilir);

@@ -11,6 +11,8 @@ struct ArchiveView: View {
     @State private var showAddSheet = false
     /// Grid'den seçilen ürün — ProductDetailView sheet'inin payload'u.
     @State private var selectedItem: UserProductResponse?
+    /// 0 = Sahip olduklarım (owned) · 1 = Alınacaklar (wishlist)
+    @State private var segment = 0
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -29,20 +31,32 @@ struct ArchiveView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Theme.canvas.ignoresSafeArea()
+            VStack(spacing: 0) {
+                Picker("", selection: $segment) {
+                    Text(L("Sahip olduklarım")).tag(0)
+                    Text(L("Alınacaklar")).tag(1)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+                .padding(.bottom, 4)
+                .onChange(of: segment) { Haptics.selection(); Task { await load() } }
 
-                if isLoading {
-                    loadingState
-                } else if let err = loadError, products.isEmpty {
-                    errorState(err)
-                } else if products.isEmpty {
-                    emptyState
-                } else {
-                    productGrid
+                ZStack {
+                    Theme.canvas.ignoresSafeArea()
+
+                    if isLoading {
+                        loadingState
+                    } else if let err = loadError, products.isEmpty {
+                        errorState(err)
+                    } else if products.isEmpty {
+                        segment == 0 ? AnyView(emptyState) : AnyView(wishlistEmptyState)
+                    } else {
+                        productGrid
+                    }
                 }
             }
-            .navigationTitle(L("Arşiv"))
+            .navigationTitle(L("Ürünler"))
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -178,6 +192,15 @@ struct ArchiveView: View {
                     }
                     .buttonStyle(PressedScaleButtonStyle())
                     .accessibilityLabel(p.name ?? p.nickname ?? L("Ürün"))
+                    .contextMenu {
+                        if segment == 1 {
+                            Button {
+                                Task { await markOwned(p) }
+                            } label: {
+                                Label(L("Aldım, ürünlerime taşı"), systemImage: "checkmark.circle")
+                            }
+                        }
+                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -215,9 +238,40 @@ struct ArchiveView: View {
         defer { isLoading = false }
 
         do {
-            products = try await ProductScanService.shared.listMyProducts()
+            products = segment == 0
+                ? try await ProductScanService.shared.listMyProducts()
+                : try await ProductScanService.shared.listMyWishlist()
         } catch {
             loadError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
+    }
+
+    /// Wishlist ürününü "Aldım" → owned'a taşı (Ürünler'e geçer).
+    @MainActor
+    private func markOwned(_ p: UserProductResponse) async {
+        Haptics.success()
+        var payload = UserProductUpdateRequest()
+        payload.status = "owned"
+        try? await ProductScanService.shared.updateMyProduct(p.id, payload: payload)
+        products.removeAll { $0.id == p.id } // alınacaklar listesinden çıkar
+    }
+
+    private var wishlistEmptyState: some View {
+        VStack(spacing: 12) {
+            Spacer()
+            Image(systemName: "cart")
+                .font(.system(size: 40, weight: .light))
+                .foregroundStyle(Theme.inkMute)
+            Text(L("Alınacak ürün yok"))
+                .font(Theme.Typo.headline)
+                .foregroundStyle(Theme.ink)
+            Text(L("Asistan sana ürün önerdikçe\nburada birikecek."))
+                .font(Theme.Typo.caption)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Theme.inkSoft)
+            Spacer()
+            Spacer()
+        }
+        .padding(.horizontal, 24)
     }
 }

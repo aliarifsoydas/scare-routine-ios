@@ -28,6 +28,7 @@ enum Endpoint {
 
     // Kullanıcı arşivi
     case listMyProducts
+    case listMyWishlist
     case addMyProduct
     case updateMyProduct(id: String)
     case deleteMyProduct(id: String)
@@ -124,6 +125,7 @@ enum Endpoint {
         case .verifyProduct(let id): return "/products/\(id)/verify"
 
         case .listMyProducts: return "/me/products"
+        case .listMyWishlist: return "/me/products?status=wishlist"
         case .addMyProduct: return "/me/products"
         case .updateMyProduct(let id): return "/me/products/\(id)"
         case .deleteMyProduct(let id): return "/me/products/\(id)"

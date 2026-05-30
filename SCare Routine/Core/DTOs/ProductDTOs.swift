@@ -605,6 +605,8 @@ struct UserProductResponse: Decodable, Identifiable, Hashable {
     let isArchived: Bool
     let addedVia: String?
     let createdAt: Date?
+    /// 'owned' (sahip — Ürünler) | 'wishlist' (alınacaklar). Eski backend dönmezse 'owned'.
+    let status: String
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -619,6 +621,7 @@ struct UserProductResponse: Decodable, Identifiable, Hashable {
         self.isArchived = Self.decodeBoolish(c, forKey: .isArchived) ?? false
         self.addedVia = try? c.decodeIfPresent(String.self, forKey: .addedVia)
         self.createdAt = try? c.decodeIfPresent(Date.self, forKey: .createdAt)
+        self.status = (try? c.decodeIfPresent(String.self, forKey: .status)) ?? "owned"
     }
 
     private static func decodeBoolish(_ c: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) -> Bool? {
@@ -629,7 +632,7 @@ struct UserProductResponse: Decodable, Identifiable, Hashable {
 
     private enum CodingKeys: String, CodingKey {
         case id, productId, brand, name, nickname, photoUrl
-        case isFavorite, isArchived, addedVia, createdAt
+        case isFavorite, isArchived, addedVia, createdAt, status
     }
 }
 
@@ -650,15 +653,17 @@ struct CreateUserProductResponse: Decodable {
 /// Field encoding'i `APIClient` üzerindeki snake_case strategy ile sağlanır
 /// (örn. `isFavorite` → `is_favorite`).
 struct UserProductUpdateRequest: Encodable {
-    var nickname: String?
-    var rating: Int?
-    var notes: String?
-    var isFavorite: Bool?
-    var isArchived: Bool?
+    var nickname: String? = nil
+    var rating: Int? = nil
+    var notes: String? = nil
+    var isFavorite: Bool? = nil
+    var isArchived: Bool? = nil
     /// Unix seconds — ürünün açıldığı tarih (PAO için)
-    var openedAt: Int?
+    var openedAt: Int? = nil
     /// Unix seconds — ürünün bittiği tarih
-    var finishedAt: Int?
+    var finishedAt: Int? = nil
+    /// 'owned' | 'wishlist' — "Aldım" → owned promosyonu.
+    var status: String? = nil
 }
 
 /// `GET /v1/products/:product_id` cevap zarfı.
