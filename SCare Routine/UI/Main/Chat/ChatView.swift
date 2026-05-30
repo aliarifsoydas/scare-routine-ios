@@ -250,6 +250,7 @@ struct ChatView: View {
 
             Button {
                 Haptics.light()
+                inputFocused = false   // klavyeyi kapat → yanıt + öneri kartları görünür olsun
                 Task { await vm.send() }
             } label: {
                 Image(systemName: "arrow.up")
