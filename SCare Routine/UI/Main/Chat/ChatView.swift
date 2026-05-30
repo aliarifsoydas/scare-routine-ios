@@ -1,0 +1,242 @@
+import SwiftUI
+import Combine
+
+/// AI Chat → Rutin ekranı. Mesaj listesi + canlı rutin taslağı kartı + input bar.
+struct ChatView: View {
+    @State private var vm: ChatViewModel
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var inputFocused: Bool
+    @State private var showCommitConfirm = false
+    @State private var didCommit = false
+
+    init(locale: String, existingSessionId: String? = nil) {
+        _vm = State(initialValue: ChatViewModel(locale: locale, existingSessionId: existingSessionId))
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Theme.canvas.ignoresSafeArea()
+                VStack(spacing: 0) {
+                    messageList
+                    if vm.hasDraft { draftCard }
+                    inputBar
+                }
+            }
+            .navigationTitle(L("Rutin Asistanı"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { Haptics.light(); dismiss() } label: {
+                        Image(systemName: "xmark").font(.system(size: 15, weight: .semibold))
+                    }
+                    .tint(Theme.ink)
+                }
+            }
+            .task { await vm.bootstrap() }
+            .alert(L("Hata"), isPresented: Binding(get: { vm.errorMessage != nil }, set: { if !$0 { vm.errorMessage = nil } })) {
+                Button(L("Tamam"), role: .cancel) {}
+            } message: {
+                Text(vm.errorMessage ?? "")
+            }
+            .confirmationDialog(L("Bu rutini kaydet?"), isPresented: $showCommitConfirm, titleVisibility: .visible) {
+                Button(L("Yeni rutin oluştur")) {
+                    Task {
+                        if await vm.commit(mode: "new", targetRoutineId: nil, name: vm.session?.title) {
+                            Haptics.success(); didCommit = true
+                        }
+                    }
+                }
+                Button(L("Vazgeç"), role: .cancel) {}
+            }
+        }
+    }
+
+    // MARK: - Messages
+
+    private var messageList: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    if vm.isStarting && vm.messages.isEmpty {
+                        ProgressView().tint(Theme.inkSoft).padding(.top, 40)
+                    }
+                    ForEach(vm.messages) { msg in
+                        ChatBubble(message: msg).id(msg.id)
+                    }
+                    if vm.isSending {
+                        TypingIndicator().id("typing")
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: vm.messages.count) { scrollToBottom(proxy) }
+            .onChange(of: vm.isSending) { scrollToBottom(proxy) }
+        }
+    }
+
+    private func scrollToBottom(_ proxy: ScrollViewProxy) {
+        withAnimation(.easeOut(duration: 0.25)) {
+            if vm.isSending {
+                proxy.scrollTo("typing", anchor: .bottom)
+            } else if let last = vm.messages.last {
+                proxy.scrollTo(last.id, anchor: .bottom)
+            }
+        }
+    }
+
+    // MARK: - Draft card (artifact)
+
+    private var draftCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label(L("Taslak rutin"), systemImage: "sparkles")
+                    .font(Theme.Typo.caption.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+                Text(String(format: L("%d adım · uyum %%%d"), vm.draft.steps.count, vm.draft.suitabilityScore))
+                    .font(Theme.Typo.caption)
+                    .foregroundStyle(Theme.inkSoft)
+            }
+
+            ForEach(vm.draft.steps.prefix(4)) { step in
+                HStack(alignment: .top, spacing: 8) {
+                    Text("\(step.orderIndex + 1)")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.onAccent)
+                        .frame(width: 20, height: 20)
+                        .background(Circle().fill(Theme.ink))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(step.rationale).font(Theme.Typo.caption).foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let freq = step.frequencyLabel {
+                            Text(freq).font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+
+            if !vm.draft.missingCategories.isEmpty {
+                Text(String(format: L("Eksik: %@"), vm.draft.missingCategories.joined(separator: ", ")))
+                    .font(.system(size: 11)).foregroundStyle(Theme.inkMute)
+            }
+
+            Button {
+                Haptics.heavy(); showCommitConfirm = true
+            } label: {
+                Text(didCommit ? L("Kaydedildi ✓") : L("Rutini Kaydet"))
+                    .font(Theme.Typo.button)
+                    .foregroundStyle(Theme.onAccent)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(vm.readyToCommit && !didCommit ? Theme.ink : Theme.inkMute))
+            }
+            .disabled(!vm.readyToCommit || didCommit)
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.divider, lineWidth: 1))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    // MARK: - Input
+
+    private var inputBar: some View {
+        HStack(alignment: .bottom, spacing: 10) {
+            TextField(L("Bir şeyler yaz…"), text: $vm.input, axis: .vertical)
+                .font(Theme.Typo.body)
+                .lineLimit(1...5)
+                .focused($inputFocused)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.surfaceLow))
+
+            Button {
+                Haptics.light()
+                Task { await vm.send() }
+            } label: {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(Theme.onAccent)
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(canSend ? Theme.ink : Theme.inkMute))
+            }
+            .disabled(!canSend)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Theme.canvas)
+    }
+
+    private var canSend: Bool {
+        !vm.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !vm.isSending
+    }
+}
+
+// MARK: - Bubble
+
+private struct ChatBubble: View {
+    let message: ChatMessageDTO
+
+    var body: some View {
+        switch message.role {
+        case "user":
+            HStack {
+                Spacer(minLength: 40)
+                bubbleText(message.content ?? "", fg: Theme.onAccent, bg: Theme.ink)
+            }
+        case "assistant":
+            HStack {
+                bubbleText(message.content ?? "", fg: Theme.ink, bg: Theme.surface)
+                Spacer(minLength: 40)
+            }
+        default: // system
+            HStack {
+                Spacer()
+                Text(message.content ?? "")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.inkSoft)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(Capsule().fill(Theme.surfaceLow))
+                Spacer()
+            }
+        }
+    }
+
+    private func bubbleText(_ text: String, fg: Color, bg: Color) -> some View {
+        Text(text)
+            .font(Theme.Typo.body)
+            .foregroundStyle(fg)
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(bg))
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+// MARK: - Typing indicator
+
+private struct TypingIndicator: View {
+    @State private var phase = 0
+    private let timer = Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        HStack {
+            HStack(spacing: 4) {
+                ForEach(0..<3) { i in
+                    Circle().fill(Theme.inkMute)
+                        .frame(width: 7, height: 7)
+                        .opacity(phase == i ? 1 : 0.35)
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.surface))
+            Spacer(minLength: 40)
+        }
+        .onReceive(timer) { _ in phase = (phase + 1) % 3 }
+    }
+}
