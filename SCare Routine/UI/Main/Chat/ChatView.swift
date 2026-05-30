@@ -132,17 +132,31 @@ struct ChatView: View {
                         .font(Theme.Typo.caption).foregroundStyle(Theme.inkSoft)
 
                     ForEach(vm.draft.steps) { step in
-                        HStack(alignment: .top, spacing: 8) {
+                        let p = vm.productsById[step.userProductId]
+                        HStack(alignment: .top, spacing: 10) {
                             Text("\(step.orderIndex + 1)")
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundStyle(Theme.onAccent)
-                                .frame(width: 20, height: 20)
+                                .frame(width: 22, height: 22)
                                 .background(Circle().fill(Theme.ink))
+                            if let u = p?.photoUrl, let url = URL(string: u) {
+                                AsyncImage(url: url) { img in
+                                    img.resizable().scaledToFit()
+                                } placeholder: {
+                                    Color.clear
+                                }
+                                .frame(width: 40, height: 40)
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            }
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(step.rationale).font(Theme.Typo.caption).foregroundStyle(Theme.ink)
+                                Text(productName(p))
+                                    .font(Theme.Typo.body.weight(.semibold)).foregroundStyle(Theme.ink)
+                                    .lineLimit(2)
+                                Text(step.rationale).font(Theme.Typo.caption).foregroundStyle(Theme.inkSoft)
                                     .fixedSize(horizontal: false, vertical: true)
                                 if let freq = step.frequencyLabel {
-                                    Text(freq).font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                                    Text(freq).font(.system(size: 11)).foregroundStyle(Theme.inkMute)
                                 }
                             }
                             Spacer(minLength: 0)
@@ -274,6 +288,12 @@ struct ChatView: View {
     /// bir sinyal (model nadiren true yapıyor) — kaydı bloklamaz.
     private var canCommit: Bool {
         !vm.draft.steps.isEmpty && !didCommit
+    }
+
+    private func productName(_ p: UserProductResponse?) -> String {
+        guard let p else { return L("Ürün") }
+        let parts = [p.brand, p.name].compactMap { $0 }.joined(separator: " ")
+        return parts.isEmpty ? (p.nickname ?? L("Ürün")) : parts
     }
 }
 

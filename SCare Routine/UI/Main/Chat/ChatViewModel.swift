@@ -16,6 +16,8 @@ final class ChatViewModel {
     var suggestedProducts: [ChatSuggestedProduct] = []
     /// Alınacaklara eklenmiş öneri id'leri (buton "Eklendi" göstersin).
     var wishlistedIds: Set<String> = []
+    /// user_product_id → ürün (taslak adımlarında isim + foto göstermek için).
+    var productsById: [String: UserProductResponse] = [:]
 
     var input: String = ""
     var isSending = false
@@ -38,10 +40,19 @@ final class ChatViewModel {
     // MARK: - Lifecycle
 
     func bootstrap() async {
+        async let products: Void = loadProducts()
         if let id = existingSessionId {
             await loadExisting(id: id)
         } else {
             await startNew()
+        }
+        await products
+    }
+
+    /// Sahip olunan ürünleri çek → user_product_id eşlemesi (taslakta isim+foto).
+    private func loadProducts() async {
+        if let items = try? await ProductScanService.shared.listMyProducts() {
+            productsById = Dictionary(items.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         }
     }
 
