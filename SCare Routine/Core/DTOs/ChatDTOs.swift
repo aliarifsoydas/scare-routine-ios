@@ -59,6 +59,18 @@ struct ChatMessageMeta: Decodable, Hashable {
 
 // MARK: - Responses
 
+/// Katalogdan önerilen, sahip OLUNMAYAN ürün (kullanıcı "Alınacaklara ekle"yebilir).
+struct ChatSuggestedProduct: Decodable, Identifiable, Hashable {
+    let productId: String
+    let reason: String
+    let brand: String?
+    let name: String?
+    let subcategory: String?
+    let imageUrl: String?
+
+    var id: String { productId }
+}
+
 /// POST /sessions ve POST /messages → aynı turn şekli.
 struct ChatTurnResponse: Decodable {
     let session: ChatSessionDTO
@@ -66,6 +78,7 @@ struct ChatTurnResponse: Decodable {
     let draft: ChatDraftDTO
     let readyToCommit: Bool
     let missingInfo: [String]
+    let suggestedProducts: [ChatSuggestedProduct]?
 }
 
 struct ChatSessionDetailResponse: Decodable {

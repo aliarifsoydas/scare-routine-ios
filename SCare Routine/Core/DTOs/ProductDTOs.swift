@@ -590,6 +590,8 @@ struct UserProductCreateRequest: Encodable {
     let manualBrand: String?
     let manualName: String?
     let manualCategory: String?
+    /// 'owned' (default) | 'wishlist' (chat önerisi "Alınacaklara ekle").
+    var status: String? = nil
 }
 
 /// Backend'in arşiv POST cevabı + listele cevabı item'ı.

@@ -19,6 +19,7 @@ struct ChatView: View {
                 Theme.canvas.ignoresSafeArea()
                 VStack(spacing: 0) {
                     messageList
+                    if !vm.suggestedProducts.isEmpty { suggestionStrip }
                     if vm.hasDraft { draftCard }
                     inputBar
                 }
@@ -138,6 +139,69 @@ struct ChatView: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
         .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    // MARK: - Önerilen ürünler (sahip olunmayan → Alınacaklara ekle)
+
+    private var suggestionStrip: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(L("Önerilen ürünler"))
+                .font(Theme.Typo.caption.weight(.semibold))
+                .foregroundStyle(Theme.inkSoft)
+                .padding(.horizontal, 16)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(vm.suggestedProducts) { sp in
+                        suggestionCard(sp)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    private func suggestionCard(_ sp: ChatSuggestedProduct) -> some View {
+        let added = vm.wishlistedIds.contains(sp.productId)
+        return VStack(alignment: .leading, spacing: 6) {
+            if let u = sp.imageUrl, let url = URL(string: u) {
+                AsyncImage(url: url) { img in
+                    img.resizable().scaledToFit()
+                } placeholder: {
+                    Color.clear
+                }
+                .frame(height: 64)
+                .frame(maxWidth: .infinity)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            Text([sp.brand, sp.name].compactMap { $0 }.joined(separator: " "))
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+                .lineLimit(2)
+            Text(sp.reason)
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.inkSoft)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Button {
+                Haptics.light()
+                Task { await vm.addToWishlist(sp) }
+            } label: {
+                Text(added ? L("Eklendi ✓") : L("Alınacaklara ekle"))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(added ? Theme.inkSoft : Theme.onAccent)
+                    .frame(maxWidth: .infinity, minHeight: 30)
+                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(added ? Theme.surfaceLow : Theme.ink))
+            }
+            .disabled(added)
+        }
+        .padding(10)
+        .frame(width: 150, height: 180)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.divider, lineWidth: 1))
     }
 
     // MARK: - Input

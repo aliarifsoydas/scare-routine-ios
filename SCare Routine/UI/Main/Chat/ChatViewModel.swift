@@ -12,6 +12,10 @@ final class ChatViewModel {
     var draft: ChatDraftDTO = .empty
     var readyToCommit = false
     var missingInfo: [String] = []
+    /// Son turn'ün katalog önerileri (sahip olunmayan — "Alınacaklara ekle").
+    var suggestedProducts: [ChatSuggestedProduct] = []
+    /// Alınacaklara eklenmiş öneri id'leri (buton "Eklendi" göstersin).
+    var wishlistedIds: Set<String> = []
 
     var input: String = ""
     var isSending = false
@@ -141,9 +145,26 @@ final class ChatViewModel {
         draft = turn.draft
         readyToCommit = turn.readyToCommit
         missingInfo = turn.missingInfo
+        suggestedProducts = turn.suggestedProducts ?? []
         committedRoutineId = turn.session.committedRoutineId
         if appendReply, !turn.reply.isEmpty {
             appendAssistant(content: turn.reply)
+        }
+    }
+
+    /// Önerilen ürünü "Alınacaklar"a (wishlist) ekle.
+    func addToWishlist(_ sp: ChatSuggestedProduct) async {
+        do {
+            let req = UserProductCreateRequest(
+                productId: sp.productId, nickname: nil, photoUrl: nil, openedAt: nil,
+                rating: nil, notes: nil, addedVia: "search",
+                manualBrand: nil, manualName: nil, manualCategory: nil, status: "wishlist"
+            )
+            _ = try await ProductScanService.shared.addToArchive(req)
+            wishlistedIds.insert(sp.productId)
+            Haptics.success()
+        } catch {
+            errorMessage = friendly(error)
         }
     }
 
