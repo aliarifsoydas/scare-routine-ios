@@ -7,6 +7,7 @@ struct ChatView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var inputFocused: Bool
     @State private var showCommitSheet = false
+    @State private var showDraftSheet = false
     @State private var didCommit = false
 
     init(locale: String, existingSessionId: String? = nil) {
@@ -19,8 +20,9 @@ struct ChatView: View {
                 Theme.canvas.ignoresSafeArea()
                 VStack(spacing: 0) {
                     messageList
-                    if !vm.suggestedProducts.isEmpty { suggestionStrip }
-                    if vm.hasDraft { draftCard }
+                    // Klavye açıkken öneri şeridini gizle (mesaj listesine yer kalsın).
+                    if !inputFocused && !vm.suggestedProducts.isEmpty { suggestionStrip }
+                    if vm.hasDraft { draftBar }
                     inputBar
                 }
             }
@@ -45,6 +47,9 @@ struct ChatView: View {
                     didCommit = true
                 }
                 .presentationDetents([.medium, .large])
+            }
+            .sheet(isPresented: $showDraftSheet) {
+                draftSheet
             }
         }
     }
@@ -84,61 +89,88 @@ struct ChatView: View {
         }
     }
 
-    // MARK: - Draft card (artifact)
+    // MARK: - Draft (kompakt bar — dokununca tam sheet açılır; yer kaplamasın)
 
-    private var draftCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Label(L("Taslak rutin"), systemImage: "sparkles")
-                    .font(Theme.Typo.caption.weight(.semibold))
-                    .foregroundStyle(Theme.ink)
-                Spacer()
-                Text(String(format: L("%d adım · uyum %%%d"), vm.draft.steps.count, vm.draft.suitabilityScore))
-                    .font(Theme.Typo.caption)
-                    .foregroundStyle(Theme.inkSoft)
-            }
-
-            ForEach(vm.draft.steps.prefix(4)) { step in
-                HStack(alignment: .top, spacing: 8) {
-                    Text("\(step.orderIndex + 1)")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Theme.onAccent)
-                        .frame(width: 20, height: 20)
-                        .background(Circle().fill(Theme.ink))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(step.rationale).font(Theme.Typo.caption).foregroundStyle(Theme.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if let freq = step.frequencyLabel {
-                            Text(freq).font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
-                        }
-                    }
-                    Spacer(minLength: 0)
+    private var draftBar: some View {
+        HStack(spacing: 10) {
+            Button {
+                Haptics.light(); showDraftSheet = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles").font(.system(size: 13, weight: .semibold))
+                    Text(String(format: L("Taslak · %d adım · %%%d"), vm.draft.steps.count, vm.draft.suitabilityScore))
+                        .font(Theme.Typo.caption.weight(.semibold))
+                    Image(systemName: "chevron.up").font(.system(size: 10, weight: .semibold))
                 }
+                .foregroundStyle(Theme.ink)
             }
+            .buttonStyle(.plain)
 
-            if !vm.draft.missingCategories.isEmpty {
-                Text(String(format: L("Eksik: %@"), vm.draft.missingCategories.joined(separator: ", ")))
-                    .font(.system(size: 11)).foregroundStyle(Theme.inkMute)
-            }
+            Spacer()
 
             Button {
                 Haptics.heavy(); showCommitSheet = true
             } label: {
-                Text(didCommit ? L("Kaydedildi ✓") : L("Rutini Kaydet"))
-                    .font(Theme.Typo.button)
+                Text(didCommit ? L("Kaydedildi ✓") : L("Kaydet"))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.onAccent)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(canCommit ? Theme.ink : Theme.inkMute))
+                    .padding(.horizontal, 14).frame(minHeight: 32)
+                    .background(Capsule().fill(canCommit ? Theme.ink : Theme.inkMute))
             }
             .disabled(!canCommit)
         }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.divider, lineWidth: 1))
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .padding(.horizontal, 16).padding(.vertical, 8)
+        .background(Theme.surface)
+        .overlay(Rectangle().frame(height: 1).foregroundStyle(Theme.divider), alignment: .top)
+    }
+
+    private var draftSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(String(format: L("%d adım · uyum %%%d"), vm.draft.steps.count, vm.draft.suitabilityScore))
+                        .font(Theme.Typo.caption).foregroundStyle(Theme.inkSoft)
+
+                    ForEach(vm.draft.steps) { step in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("\(step.orderIndex + 1)")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(Theme.onAccent)
+                                .frame(width: 20, height: 20)
+                                .background(Circle().fill(Theme.ink))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(step.rationale).font(Theme.Typo.caption).foregroundStyle(Theme.ink)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if let freq = step.frequencyLabel {
+                                    Text(freq).font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                                }
+                            }
+                            Spacer(minLength: 0)
+                        }
+                    }
+
+                    if !vm.draft.missingCategories.isEmpty {
+                        Text(String(format: L("Eksik: %@"), vm.draft.missingCategories.joined(separator: ", ")))
+                            .font(.system(size: 12)).foregroundStyle(Theme.inkMute)
+                    }
+                }
+                .padding(16)
+            }
+            .background(Theme.canvas)
+            .navigationTitle(L("Taslak rutin"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(L("Kapat")) { showDraftSheet = false }.tint(Theme.ink)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(didCommit ? L("Kaydedildi ✓") : L("Kaydet")) {
+                        showDraftSheet = false; Haptics.heavy(); showCommitSheet = true
+                    }.disabled(!canCommit).tint(Theme.ink)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 
     // MARK: - Önerilen ürünler (sahip olunmayan → Alınacaklara ekle)
