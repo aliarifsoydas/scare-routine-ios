@@ -503,7 +503,9 @@ struct AIRecommendPreviewSheet: View {
             .map { s in
                 var p = RoutineStepPayload()
                 p.userProductId = s.userProductId
-                p.instruction = s.instruction
+                // instruction yoksa rationale'ı kullan (adım daha bilgilendirici;
+                // chat commit'iyle tutarlı — routine_steps'te rationale kolonu yok).
+                p.instruction = (s.instruction?.isEmpty == false) ? s.instruction : s.rationale
                 p.daysActive = s.daysActive
                 p.frequencyLabel = s.frequencyLabel
                 return p
