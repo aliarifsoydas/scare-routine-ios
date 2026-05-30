@@ -20,6 +20,9 @@ struct ChatView: View {
                 Theme.canvas.ignoresSafeArea()
                 VStack(spacing: 0) {
                     messageList
+                    if let ps = vm.profileSuggestion, !vm.profileSuggestionHandled {
+                        profileSuggestionCard(ps)
+                    }
                     // Öneri kartları her zaman görünür (taslak kompakt bar olduğu için yer var).
                     if !vm.suggestedProducts.isEmpty { suggestionStrip }
                     if vm.hasDraft { draftBar }
@@ -185,6 +188,53 @@ struct ChatView: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    // MARK: - Profil önerisi (onaylı kayıt)
+
+    private func profileSuggestionCard(_ ps: ChatProfileSuggestion) -> some View {
+        var parts: [String] = []
+        if let st = ps.skinType { parts.append("\(L("Cilt tipi")): \(skinTypeLabel(st))") }
+        if !ps.concerns.isEmpty { parts.append("\(L("Endişeler")): \(ps.concerns.joined(separator: ", "))") }
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "person.crop.circle.badge.checkmark").font(.system(size: 13, weight: .semibold))
+                Text(L("Profiline kaydedeyim mi?")).font(Theme.Typo.caption.weight(.semibold))
+            }
+            .foregroundStyle(Theme.ink)
+            Text(parts.joined(separator: " · ")).font(Theme.Typo.caption).foregroundStyle(Theme.inkSoft)
+            HStack(spacing: 8) {
+                Button {
+                    Haptics.light(); Task { await vm.saveProfile() }
+                } label: {
+                    Text(L("Kaydet")).font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.onAccent)
+                        .padding(.horizontal, 16).frame(minHeight: 30).background(Capsule().fill(Theme.ink))
+                }
+                .buttonStyle(.plain)
+                Button {
+                    Haptics.light(); vm.dismissProfileSuggestion()
+                } label: {
+                    Text(L("Şimdilik değil")).font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                        .padding(.horizontal, 14).frame(minHeight: 30).background(Capsule().fill(Theme.surfaceLow))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surface)
+        .overlay(Rectangle().frame(height: 1).foregroundStyle(Theme.divider), alignment: .top)
+    }
+
+    private func skinTypeLabel(_ code: String) -> String {
+        switch code.lowercased() {
+        case "oily": return L("Yağlı")
+        case "dry": return L("Kuru")
+        case "combination": return L("Karma")
+        case "sensitive": return L("Hassas")
+        case "normal": return L("Normal")
+        default: return code
+        }
     }
 
     // MARK: - Önerilen ürünler (sahip olunmayan → Alınacaklara ekle)

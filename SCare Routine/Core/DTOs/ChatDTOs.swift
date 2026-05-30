@@ -71,6 +71,12 @@ struct ChatSuggestedProduct: Decodable, Identifiable, Hashable {
     var id: String { productId }
 }
 
+/// Chat'in öğrendiği, profilden farklı profil bilgisi — kullanıcı onayıyla kaydedilir.
+struct ChatProfileSuggestion: Decodable, Hashable {
+    let skinType: String?
+    let concerns: [String]
+}
+
 /// POST /sessions ve POST /messages → aynı turn şekli.
 struct ChatTurnResponse: Decodable {
     let session: ChatSessionDTO
@@ -79,6 +85,7 @@ struct ChatTurnResponse: Decodable {
     let readyToCommit: Bool
     let missingInfo: [String]
     let suggestedProducts: [ChatSuggestedProduct]?
+    let profileSuggestion: ChatProfileSuggestion?
 }
 
 struct ChatSessionDetailResponse: Decodable {

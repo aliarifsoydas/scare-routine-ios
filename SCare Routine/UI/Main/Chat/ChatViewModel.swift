@@ -18,6 +18,10 @@ final class ChatViewModel {
     var wishlistedIds: Set<String> = []
     /// user_product_id → ürün (taslak adımlarında isim + foto göstermek için).
     var productsById: [String: UserProductResponse] = [:]
+    /// Chat'in öğrendiği profil önerisi (kullanıcı onayıyla kaydedilir).
+    var profileSuggestion: ChatProfileSuggestion?
+    /// Bu öneri kaydedildi/reddedildi mi (kartı gizle).
+    var profileSuggestionHandled = false
 
     var input: String = ""
     var isSending = false
@@ -158,9 +162,33 @@ final class ChatViewModel {
         missingInfo = turn.missingInfo
         suggestedProducts = turn.suggestedProducts ?? []
         committedRoutineId = turn.session.committedRoutineId
+        if let ps = turn.profileSuggestion, !(ps.skinType == nil && ps.concerns.isEmpty) {
+            profileSuggestion = ps
+            profileSuggestionHandled = false
+        }
         if appendReply, !turn.reply.isEmpty {
             appendAssistant(content: turn.reply)
         }
+    }
+
+    /// Profil önerisini kullanıcı onayıyla kaydet.
+    func saveProfile() async {
+        guard let ps = profileSuggestion else { return }
+        var payload = ProfileUpdateRequest()
+        if let st = ps.skinType { payload.skinType = st }
+        if !ps.concerns.isEmpty { payload.skinConcerns = ps.concerns }
+        do {
+            try await UserService.shared.updateProfile(payload)
+            profileSuggestionHandled = true
+            Haptics.success()
+            appendSystem(content: L("Profiline kaydedildi ✓"))
+        } catch {
+            errorMessage = friendly(error)
+        }
+    }
+
+    func dismissProfileSuggestion() {
+        profileSuggestionHandled = true
     }
 
     /// Önerilen ürünü "Alınacaklar"a (wishlist) ekle.
