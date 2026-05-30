@@ -20,8 +20,8 @@ struct ChatView: View {
                 Theme.canvas.ignoresSafeArea()
                 VStack(spacing: 0) {
                     messageList
-                    // Klavye açıkken öneri şeridini gizle (mesaj listesine yer kalsın).
-                    if !inputFocused && !vm.suggestedProducts.isEmpty { suggestionStrip }
+                    // Öneri kartları her zaman görünür (taslak kompakt bar olduğu için yer var).
+                    if !vm.suggestedProducts.isEmpty { suggestionStrip }
                     if vm.hasDraft { draftBar }
                     inputBar
                 }
