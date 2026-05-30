@@ -78,6 +78,16 @@ enum Endpoint {
     case aiRecommendWeeklyPlan
     case aiUsage
 
+    // AI Chat → Rutin
+    case createChatSession
+    case listChatSessions
+    case getChatSession(id: String)
+    case postChatMessage(id: String)
+    case chatProductEvent(id: String)
+    case commitChat(id: String)
+    case reportChat(id: String)
+    case deleteChatSession(id: String)
+
     // User-accepted weekly plan (persistent — "kabul ettim, kalsın")
     case meWeeklyPlanGet
     case meWeeklyPlanAccept
@@ -154,6 +164,13 @@ enum Endpoint {
         case .aiRecommendRoutine: return "/ai/recommend-routine"
         case .aiRecommendWeeklyPlan: return "/ai/recommend-weekly-plan"
         case .aiUsage: return "/ai/usage"
+        case .createChatSession, .listChatSessions: return "/ai/chat/sessions"
+        case .getChatSession(let id): return "/ai/chat/sessions/\(id)"
+        case .postChatMessage(let id): return "/ai/chat/sessions/\(id)/messages"
+        case .chatProductEvent(let id): return "/ai/chat/sessions/\(id)/events"
+        case .commitChat(let id): return "/ai/chat/sessions/\(id)/commit"
+        case .reportChat(let id): return "/ai/chat/sessions/\(id)/report"
+        case .deleteChatSession(let id): return "/ai/chat/sessions/\(id)"
 
         case .meWeeklyPlanGet, .meWeeklyPlanAccept, .meWeeklyPlanDiscard: return "/me/weekly-plan"
 
@@ -173,7 +190,8 @@ enum Endpoint {
              .postLog, .postSkinLog, .postSkinToneEstimate, .createCycle,
              .ackNotification, .registerDevice, .postHealthMetricsBulk,
              .aiRoutineReview, .aiProductExplain, .aiSkinMeta, .aiRecommendRoutine, .aiRecommendWeeklyPlan,
-             .meWeeklyPlanAccept:
+             .meWeeklyPlanAccept,
+             .createChatSession, .postChatMessage, .chatProductEvent, .commitChat, .reportChat:
             return .post
 
         case .updateProfile, .setRoutineSteps:
@@ -182,7 +200,8 @@ enum Endpoint {
         case .updateMyProduct, .updateRoutine, .updateCycle:
             return .patch
 
-        case .deleteAccount, .deleteMyProduct, .deleteRoutine, .meWeeklyPlanDiscard:
+        case .deleteAccount, .deleteMyProduct, .deleteRoutine, .meWeeklyPlanDiscard,
+             .deleteChatSession:
             return .delete
 
         default:
